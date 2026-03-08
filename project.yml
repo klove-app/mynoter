@@ -1,0 +1,27 @@
+name: VankinyZametki
+options:
+  bundleIdPrefix: com.vankiny
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+targets:
+  VankinyZametki:
+    type: application
+    platform: iOS
+    sources:
+      - VankinyZametki
+    settings:
+      base:
+        INFOPLIST_FILE: VankinyZametki/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.vankiny.zametki
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    info:
+      path: VankinyZametki/Resources/Info.plist

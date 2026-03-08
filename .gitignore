@@ -1,0 +1,10 @@
+node_modules/
+api/uploads/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+.build/
+.env
+.DS_Store
+.cursor/
