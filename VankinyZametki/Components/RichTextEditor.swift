@@ -73,7 +73,7 @@ struct RichTextEditor: UIViewRepresentable {
 
 // MARK: - Formatting Commands
 
-enum TextFormatAction {
+enum TextFormatAction: Equatable {
     case bold, italic, underline, strikethrough
     case heading(Int)
     case bulletList, numberedList

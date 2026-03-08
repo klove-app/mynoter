@@ -62,7 +62,7 @@ struct FolderListView: View {
                 } label: {
                     HStack {
                         Image(systemName: "folder.fill")
-                            .foregroundStyle(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                         Text(folder.name)
                             .foregroundStyle(.primary)
                         Spacer()

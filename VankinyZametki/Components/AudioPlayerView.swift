@@ -1,5 +1,5 @@
 import SwiftUI
-import AVFoundation
+@preconcurrency import AVFoundation
 
 struct AudioPlayerView: View {
     let urlString: String
@@ -24,7 +24,7 @@ struct AudioPlayerView: View {
                     } label: {
                         Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 36))
-                            .foregroundStyle(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                     }
 
                     VStack(spacing: 4) {
@@ -84,12 +84,14 @@ struct AudioPlayerView: View {
             timer?.invalidate()
         } else {
             player.play()
-            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                progress = player.currentTime
-                if !player.isPlaying {
-                    isPlaying = false
-                    timer?.invalidate()
-                    progress = 0
+            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] _ in
+                MainActor.assumeIsolated {
+                    progress = player.currentTime
+                    if !player.isPlaying {
+                        isPlaying = false
+                        timer?.invalidate()
+                        progress = 0
+                    }
                 }
             }
         }

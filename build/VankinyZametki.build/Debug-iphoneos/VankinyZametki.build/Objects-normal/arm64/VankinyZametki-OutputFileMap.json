@@ -1,0 +1,209 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametki-primary.dia",
+    "emit-module-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametki-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametki-primary-emit-module.dia",
+    "pch" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametki-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametki-primary.swiftdeps"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/App/ContentView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/App/VankinyZametkiApp.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VankinyZametkiApp~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Components/AudioPlayerView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioPlayerView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Components/FormattingToolbar.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FormattingToolbar~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Components/RichTextEditor.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/RichTextEditor~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Models/Folder.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Folder~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Models/Note.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Note~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Services/APIService.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/APIService~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Services/AudioRecorderService.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/AudioRecorderService~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Services/FolderStore.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderStore~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Services/NoteProcessingService.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteProcessingService~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Services/NoteStore.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteStore~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Utils/Config.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/Config~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Utils/HTMLConverter.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/HTMLConverter~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Views/FolderListView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/FolderListView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Views/NoteEditorView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteEditorView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Views/NoteListView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/NoteListView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Views/SettingsView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/SettingsView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/VankinyZametki/Views/VoiceRecorderView.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/VoiceRecorderView~partial.swiftmodule"
+  },
+  "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/ivankazakov/ванькинызаметки/build/VankinyZametki.build/Debug-iphoneos/VankinyZametki.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

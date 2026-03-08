@@ -193,7 +193,7 @@ struct NoteRowView: View {
                 if note.isVoiceNote {
                     Image(systemName: "mic.fill")
                         .font(.caption)
-                        .foregroundStyle(.accentColor)
+                        .foregroundStyle(Color.accentColor)
                 }
                 Spacer()
             }
