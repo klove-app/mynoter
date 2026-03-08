@@ -4,6 +4,7 @@ api/uploads/
 *.xcworkspace/
 xcuserdata/
 DerivedData/
+build/
 .build/
 .env
 .DS_Store
