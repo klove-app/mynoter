@@ -38,7 +38,7 @@ notesRouter.get("/", async (req, res) => {
     if (notes.length > 0) {
       const noteIds = notes.map((n) => n.id);
       const tagsResult = await pool.query(
-        `SELECT nt.note_id, t.id, t.name, t.color
+        `SELECT nt.note_id, t.id, t.name, t.color, t.created_at, t.updated_at
          FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
          WHERE nt.note_id = ANY($1)`,
         [noteIds]
@@ -46,7 +46,10 @@ notesRouter.get("/", async (req, res) => {
       const tagsByNote = {};
       for (const row of tagsResult.rows) {
         if (!tagsByNote[row.note_id]) tagsByNote[row.note_id] = [];
-        tagsByNote[row.note_id].push({ id: row.id, name: row.name, color: row.color });
+        tagsByNote[row.note_id].push({
+          id: row.id, name: row.name, color: row.color,
+          created_at: row.created_at, updated_at: row.updated_at
+        });
       }
       for (const note of notes) {
         note.tags = tagsByNote[note.id] || [];
