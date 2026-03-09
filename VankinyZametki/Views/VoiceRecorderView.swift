@@ -371,6 +371,7 @@ struct VoiceRecorderView: View {
                     audioUrl: result.audioUrl
                 )
                 await noteStore.loadNotes()
+                isProcessing = false
                 createdNote = note
                 recorder.cleanup()
             } catch {
