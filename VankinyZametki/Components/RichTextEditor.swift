@@ -54,9 +54,11 @@ struct RichTextEditor: UIViewRepresentable {
         func loadHTML(_ html: String, into textView: UITextView) {
             lastSetHTML = html
             guard !html.isEmpty else { return }
-            isProgrammaticUpdate = true
-            textView.attributedText = HTMLConverter.attributedString(from: html)
-            isProgrammaticUpdate = false
+            DispatchQueue.main.async { [self] in
+                self.isProgrammaticUpdate = true
+                textView.attributedText = HTMLConverter.attributedString(from: html)
+                self.isProgrammaticUpdate = false
+            }
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
