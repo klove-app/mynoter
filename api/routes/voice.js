@@ -85,7 +85,7 @@ async function formatWithClaude(transcription) {
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
   const anthropic = new Anthropic({ apiKey });
-  const model = process.env.CLAUDE_MODEL || "claude-haiku-4-20250414";
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
   const message = await anthropic.messages.create({
     model,
     max_tokens: 4096,
