@@ -33,7 +33,27 @@ notesRouter.get("/", async (req, res) => {
         : " ORDER BY created_at DESC";
 
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    const notes = result.rows;
+
+    if (notes.length > 0) {
+      const noteIds = notes.map((n) => n.id);
+      const tagsResult = await pool.query(
+        `SELECT nt.note_id, t.id, t.name, t.color
+         FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
+         WHERE nt.note_id = ANY($1)`,
+        [noteIds]
+      );
+      const tagsByNote = {};
+      for (const row of tagsResult.rows) {
+        if (!tagsByNote[row.note_id]) tagsByNote[row.note_id] = [];
+        tagsByNote[row.note_id].push({ id: row.id, name: row.name, color: row.color });
+      }
+      for (const note of notes) {
+        note.tags = tagsByNote[note.id] || [];
+      }
+    }
+
+    res.json(notes);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

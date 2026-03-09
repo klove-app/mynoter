@@ -4,6 +4,7 @@ import { notesRouter } from "./routes/notes.js";
 import { foldersRouter } from "./routes/folders.js";
 import { voiceRouter } from "./routes/voice.js";
 import { audioRouter } from "./routes/audio.js";
+import { tagsRouter } from "./routes/tags.js";
 import pool from "./db.js";
 
 const app = express();
@@ -17,6 +18,7 @@ app.use("/api/notes", notesRouter);
 app.use("/api/folders", foldersRouter);
 app.use("/api/voice", voiceRouter);
 app.use("/api/audio", audioRouter);
+app.use("/api/tags", tagsRouter);
 
 app.get("/health", async (_req, res) => {
   try {
