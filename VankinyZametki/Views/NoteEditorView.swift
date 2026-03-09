@@ -15,6 +15,7 @@ struct NoteEditorView: View {
     @State private var showSaved = false
     @State private var showFolderPicker = false
     @State private var showDeleteConfirm = false
+    @State private var showVoiceAppend = false
 
     init(note: Note) {
         _note = State(initialValue: note)
@@ -85,6 +86,11 @@ struct NoteEditorView: View {
             }
 
             ToolbarItemGroup(placement: .primaryAction) {
+                Button { showVoiceAppend = true } label: {
+                    Image(systemName: "mic.badge.plus")
+                        .font(.system(size: 15))
+                }
+
                 ShareLink(item: shareText) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 15))
@@ -95,6 +101,19 @@ struct NoteEditorView: View {
         }
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerSheet(selectedFolderId: $note.folderId)
+        }
+        .sheet(isPresented: $showVoiceAppend) {
+            NavigationStack {
+                VoiceRecorderView { appendedHTML in
+                    if htmlContent.isEmpty {
+                        htmlContent = appendedHTML
+                    } else {
+                        htmlContent += "<hr>" + appendedHTML
+                    }
+                    scheduleAutoSave()
+                }
+            }
+            .presentationDragIndicator(.visible)
         }
         .alert("Удалить заметку?", isPresented: $showDeleteConfirm) {
             Button("Удалить", role: .destructive) {

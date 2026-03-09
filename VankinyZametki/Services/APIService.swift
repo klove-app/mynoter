@@ -133,6 +133,16 @@ final class APIService: @unchecked Sendable {
         return try await post("/api/voice/format", body: body)
     }
 
+    struct FormatTextResult: Decodable {
+        let html: String
+    }
+
+    func formatText(transcription: String) async throws -> String {
+        let body: [String: Any?] = ["transcription": transcription]
+        let result: FormatTextResult = try await post("/api/voice/format-text", body: body)
+        return result.html
+    }
+
     // MARK: - Audio Upload
 
     func uploadAudio(data: Data) async throws -> String {

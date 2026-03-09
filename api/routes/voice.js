@@ -66,6 +66,22 @@ voiceRouter.post("/format", async (req, res) => {
   }
 });
 
+// POST /api/voice/format-text — format transcription, return HTML only (no DB save)
+voiceRouter.post("/format-text", async (req, res) => {
+  const { transcription } = req.body;
+  if (!transcription) {
+    return res.status(400).json({ error: "No transcription provided" });
+  }
+
+  try {
+    const html = await formatWithClaude(transcription, true);
+    res.json({ html });
+  } catch (err) {
+    console.error("Format-text error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 async function transcribeWithWhisper(filePath) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
@@ -81,19 +97,28 @@ async function transcribeWithWhisper(filePath) {
   return response;
 }
 
-async function formatWithClaude(transcription) {
+async function formatWithClaude(transcription, appendMode = false) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
-  const anthropic = new Anthropic({ apiKey });
-  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
-  const message = await anthropic.messages.create({
-    model,
-    max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        content: `Ты помощник для форматирования заметок. Тебе дана транскрипция голосовой заметки. 
+  const prompt = appendMode
+    ? `Ты помощник для форматирования заметок. Тебе дана транскрипция голосового дополнения к существующей заметке.
+Твоя задача — превратить её в красиво отформатированный фрагмент HTML.
+
+Правила:
+- НЕ добавляй заголовки (<h1>, <h2>) — это дополнение, не новая заметка
+- Разбей текст на логические абзацы (<p>)
+- Если есть перечисления или списки, используй <ul>/<ol> с <li>
+- Важные мысли выдели жирным (<strong>) или курсивом (<em>)
+- Ключевые слова/термины можно выделить маркером (<mark>)
+- Если есть цитаты, используй <blockquote>
+- Исправь грамматические ошибки транскрипции
+- НЕ добавляй информацию от себя, только форматируй то что есть
+- Отвечай ТОЛЬКО HTML кодом, без обёрток в \`\`\` или пояснений
+
+Транскрипция:
+${transcription}`
+    : `Ты помощник для форматирования заметок. Тебе дана транскрипция голосовой заметки. 
 Твоя задача — превратить её в красиво отформатированную заметку в HTML формате.
 
 Правила:
@@ -108,9 +133,14 @@ async function formatWithClaude(transcription) {
 - Отвечай ТОЛЬКО HTML кодом, без обёрток в \`\`\` или пояснений
 
 Транскрипция:
-${transcription}`,
-      },
-    ],
+${transcription}`;
+
+  const anthropic = new Anthropic({ apiKey });
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
+  const message = await anthropic.messages.create({
+    model,
+    max_tokens: 4096,
+    messages: [{ role: "user", content: prompt }],
   });
 
   let text = message.content[0].text;

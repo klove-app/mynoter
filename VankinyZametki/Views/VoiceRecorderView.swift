@@ -6,13 +6,18 @@ struct VoiceRecorderView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var recorder = AudioRecorderService()
 
+    var onAppend: ((String) -> Void)?
+
     @State private var isProcessing = false
     @State private var processingStatus = ""
     @State private var rawTranscription = ""
+    @State private var appendedHTML = ""
     @State private var createdNote: Note?
     @State private var showError = false
     @State private var isPlaying = false
     @State private var player: AVAudioPlayer?
+
+    private var isAppendMode: Bool { onAppend != nil }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +25,8 @@ struct VoiceRecorderView: View {
 
             if isProcessing {
                 processingView
+            } else if !appendedHTML.isEmpty {
+                appendSuccessView
             } else if let note = createdNote {
                 successView(note: note)
             } else {
@@ -30,7 +37,7 @@ struct VoiceRecorderView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground).ignoresSafeArea())
-        .navigationTitle("Запись")
+        .navigationTitle(isAppendMode ? "Дозапись" : "Запись")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -341,6 +348,31 @@ struct VoiceRecorderView: View {
         }
     }
 
+    // MARK: - Append Success
+
+    private var appendSuccessView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(.green)
+
+            Text("Текст добавлен")
+                .font(.headline)
+
+            Text(rawTranscription)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .padding(.horizontal, 24)
+        }
+        .padding(.horizontal, 32)
+        .task {
+            try? await Task.sleep(for: .seconds(1.5))
+            dismiss()
+        }
+    }
+
     // MARK: - Logic
 
     private func finishRecording() {
@@ -360,24 +392,44 @@ struct VoiceRecorderView: View {
         processingStatus = "Распознаю речь..."
         rawTranscription = ""
 
-        Task {
-            do {
-                let result = try await APIService.shared.transcribeAudio(audioData: audioData)
-                rawTranscription = result.transcription
+        if isAppendMode {
+            Task {
+                do {
+                    let result = try await APIService.shared.transcribeAudio(audioData: audioData)
+                    rawTranscription = result.transcription
 
-                processingStatus = "Форматирую текст..."
-                let note = try await APIService.shared.formatAndSaveNote(
-                    transcription: result.transcription,
-                    audioUrl: result.audioUrl
-                )
-                await noteStore.loadNotes()
-                isProcessing = false
-                createdNote = note
-                recorder.cleanup()
-            } catch {
-                recorder.errorMessage = "Ошибка: \(error.localizedDescription)"
-                showError = true
-                isProcessing = false
+                    processingStatus = "Форматирую текст..."
+                    let html = try await APIService.shared.formatText(transcription: result.transcription)
+                    isProcessing = false
+                    appendedHTML = html
+                    onAppend?(html)
+                    recorder.cleanup()
+                } catch {
+                    recorder.errorMessage = "Ошибка: \(error.localizedDescription)"
+                    showError = true
+                    isProcessing = false
+                }
+            }
+        } else {
+            Task {
+                do {
+                    let result = try await APIService.shared.transcribeAudio(audioData: audioData)
+                    rawTranscription = result.transcription
+
+                    processingStatus = "Форматирую текст..."
+                    let note = try await APIService.shared.formatAndSaveNote(
+                        transcription: result.transcription,
+                        audioUrl: result.audioUrl
+                    )
+                    await noteStore.loadNotes()
+                    isProcessing = false
+                    createdNote = note
+                    recorder.cleanup()
+                } catch {
+                    recorder.errorMessage = "Ошибка: \(error.localizedDescription)"
+                    showError = true
+                    isProcessing = false
+                }
             }
         }
     }
