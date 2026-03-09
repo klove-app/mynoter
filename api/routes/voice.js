@@ -21,8 +21,8 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 export const voiceRouter = Router();
 
-// POST /api/voice/process — upload audio, transcribe (Whisper), format (Claude), save note
-voiceRouter.post("/process", upload.single("audio"), async (req, res) => {
+// POST /api/voice/transcribe — upload audio, transcribe with Whisper
+voiceRouter.post("/transcribe", upload.single("audio"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No audio file provided" });
   }
@@ -32,26 +32,35 @@ voiceRouter.post("/process", upload.single("audio"), async (req, res) => {
   const audioUrl = `${baseUrl}/api/audio/${req.file.filename}`;
 
   try {
-    // 1. Transcribe with Whisper
     const transcription = await transcribeWithWhisper(filePath);
+    res.json({ transcription, audio_url: audioUrl });
+  } catch (err) {
+    console.error("Transcription error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    // 2. Format with Claude
+// POST /api/voice/format — format transcription with Claude and save note
+voiceRouter.post("/format", async (req, res) => {
+  const { transcription, audio_url } = req.body;
+  if (!transcription) {
+    return res.status(400).json({ error: "No transcription provided" });
+  }
+
+  try {
     const formattedHTML = await formatWithClaude(transcription);
-
-    // 3. Extract title
     const title = extractTitle(formattedHTML, transcription);
 
-    // 4. Save to DB
     const result = await pool.query(
       `INSERT INTO notes (title, content, is_voice_note, audio_url, transcription_raw)
        VALUES ($1, $2, true, $3, $4)
        RETURNING *`,
-      [title, formattedHTML, audioUrl, transcription]
+      [title, formattedHTML, audio_url || null, transcription]
     );
 
     res.json(result.rows[0]);
   } catch (err) {
-    console.error("Voice processing error:", err);
+    console.error("Format error:", err);
     res.status(500).json({ error: err.message });
   }
 });

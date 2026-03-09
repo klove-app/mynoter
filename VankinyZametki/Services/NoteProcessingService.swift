@@ -13,8 +13,14 @@ final class NoteProcessingService: ObservableObject {
         errorMessage = nil
 
         do {
-            status = "Распознаю речь и форматирую..."
-            let note = try await api.processVoiceNote(audioData: audioData)
+            status = "Распознаю речь..."
+            let result = try await api.transcribeAudio(audioData: audioData)
+
+            status = "Форматирую текст..."
+            let note = try await api.formatAndSaveNote(
+                transcription: result.transcription,
+                audioUrl: result.audioUrl
+            )
 
             status = "Готово!"
             isProcessing = false

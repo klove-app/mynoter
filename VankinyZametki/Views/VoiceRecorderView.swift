@@ -8,6 +8,7 @@ struct VoiceRecorderView: View {
 
     @State private var isProcessing = false
     @State private var processingStatus = ""
+    @State private var rawTranscription = ""
     @State private var createdNote: Note?
     @State private var showError = false
     @State private var isPlaying = false
@@ -225,22 +226,46 @@ struct VoiceRecorderView: View {
     // MARK: - Processing
 
     private var processingView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             ZStack {
                 Circle()
                     .stroke(Color.accentColor.opacity(0.15), lineWidth: 4)
-                    .frame(width: 64, height: 64)
+                    .frame(width: 56, height: 56)
                 ProgressView()
                     .controlSize(.large)
                     .tint(Color.accentColor)
             }
 
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text(processingStatus)
                     .font(.headline)
                 Text("Обычно 10-30 сек")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+            }
+
+            if !rawTranscription.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.green)
+                        Text("Распознано:")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(rawTranscription)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
+                .padding(.horizontal, 24)
             }
         }
     }
@@ -293,12 +318,19 @@ struct VoiceRecorderView: View {
         }
 
         isProcessing = true
-        processingStatus = "Загружаю аудио..."
+        processingStatus = "Распознаю речь..."
+        rawTranscription = ""
 
         Task {
             do {
-                processingStatus = "Распознаю речь..."
-                let note = try await APIService.shared.processVoiceNote(audioData: audioData)
+                let result = try await APIService.shared.transcribeAudio(audioData: audioData)
+                rawTranscription = result.transcription
+
+                processingStatus = "Форматирую текст..."
+                let note = try await APIService.shared.formatAndSaveNote(
+                    transcription: result.transcription,
+                    audioUrl: result.audioUrl
+                )
                 await noteStore.loadNotes()
                 createdNote = note
                 recorder.cleanup()

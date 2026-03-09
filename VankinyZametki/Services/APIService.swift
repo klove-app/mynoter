@@ -95,9 +95,19 @@ final class APIService: @unchecked Sendable {
 
     // MARK: - Voice Processing
 
-    func processVoiceNote(audioData: Data) async throws -> Note {
+    struct TranscriptionResult: Decodable {
+        let transcription: String
+        let audioUrl: String
+
+        enum CodingKeys: String, CodingKey {
+            case transcription
+            case audioUrl = "audio_url"
+        }
+    }
+
+    func transcribeAudio(audioData: Data) async throws -> TranscriptionResult {
         let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "\(baseURL)/api/voice/process")!)
+        var request = URLRequest(url: URL(string: "\(baseURL)/api/voice/transcribe")!)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
@@ -112,7 +122,15 @@ final class APIService: @unchecked Sendable {
 
         let (data, response) = try await session.data(for: request)
         try checkResponse(response, data: data)
-        return try decoder.decode(Note.self, from: data)
+        return try decoder.decode(TranscriptionResult.self, from: data)
+    }
+
+    func formatAndSaveNote(transcription: String, audioUrl: String) async throws -> Note {
+        let body: [String: Any?] = [
+            "transcription": transcription,
+            "audio_url": audioUrl
+        ]
+        return try await post("/api/voice/format", body: body)
     }
 
     // MARK: - Audio Upload
