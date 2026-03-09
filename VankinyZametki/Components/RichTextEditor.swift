@@ -43,6 +43,7 @@ struct RichTextEditor: UIViewRepresentable {
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: RichTextEditor
         var isEditing = false
+        var isProgrammaticUpdate = false
         var lastSetHTML: String = ""
         weak var textView: UITextView?
 
@@ -53,9 +54,9 @@ struct RichTextEditor: UIViewRepresentable {
         func loadHTML(_ html: String, into textView: UITextView) {
             lastSetHTML = html
             guard !html.isEmpty else { return }
-            let oldRange = textView.selectedRange
+            isProgrammaticUpdate = true
             textView.attributedText = HTMLConverter.attributedString(from: html)
-            textView.selectedRange = oldRange
+            isProgrammaticUpdate = false
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
@@ -70,6 +71,7 @@ struct RichTextEditor: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
+            guard !isProgrammaticUpdate else { return }
             let html = HTMLConverter.html(from: textView.attributedText)
             lastSetHTML = html
             parent.htmlContent = html
@@ -78,6 +80,7 @@ struct RichTextEditor: UIViewRepresentable {
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !isProgrammaticUpdate else { return }
             parent.selectedRange = textView.selectedRange
         }
     }
