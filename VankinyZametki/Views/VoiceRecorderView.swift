@@ -47,6 +47,12 @@ struct VoiceRecorderView: View {
         } message: {
             Text(recorder.errorMessage ?? "Неизвестная ошибка")
         }
+        .onChange(of: recorder.recordingTime) { _, newValue in
+            if newValue >= maxDuration && recorder.isRecording {
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                _ = recorder.stopRecording()
+            }
+        }
     }
 
     // MARK: - Recording
@@ -55,20 +61,42 @@ struct VoiceRecorderView: View {
         VStack(spacing: 28) {
             waveformView
 
-            Text(simpleTime)
-                .font(.system(size: 48, weight: .thin, design: .rounded))
-                .foregroundStyle(recorder.isRecording ? .primary : .tertiary)
-                .monospacedDigit()
+            VStack(spacing: 8) {
+                Text(simpleTime)
+                    .font(.system(size: 48, weight: .thin, design: .rounded))
+                    .foregroundStyle(recorder.isRecording ? .primary : .tertiary)
+                    .monospacedDigit()
+
+                if recorder.isRecording {
+                    GeometryReader { geo in
+                        let progress = min(recorder.recordingTime / maxDuration, 1.0)
+                        let isWarning = maxDuration - recorder.recordingTime <= 30
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color(.quaternarySystemFill))
+                                .frame(height: 3)
+                            Capsule()
+                                .fill(isWarning ? Color.red : Color.accentColor)
+                                .frame(width: geo.size.width * progress, height: 3)
+                                .animation(.linear(duration: 0.1), value: progress)
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.horizontal, 32)
+                }
+            }
 
             recordControls
 
             Text(statusHint)
                 .font(.footnote)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(maxDuration - recorder.recordingTime <= 30 && recorder.isRecording ? Color.red : Color(.tertiaryLabel))
                 .padding(.top, 4)
         }
         .padding(.horizontal, 32)
     }
+
+    private let maxDuration: TimeInterval = 600
 
     private var simpleTime: String {
         let total = Int(recorder.recordingTime)
@@ -77,13 +105,24 @@ struct VoiceRecorderView: View {
         return String(format: "%d:%02d", m, s)
     }
 
+    private var remainingTime: String {
+        let left = max(0, Int(maxDuration - recorder.recordingTime))
+        let m = left / 60
+        let s = left % 60
+        return String(format: "%d:%02d", m, s)
+    }
+
     private var statusHint: String {
         if recorder.isRecording {
-            return "Запись..."
+            let left = maxDuration - recorder.recordingTime
+            if left <= 30 {
+                return "Осталось \(remainingTime)"
+            }
+            return "Макс. 10 минут"
         } else if recorder.recordingURL != nil {
             return "Прослушай или отправь на распознавание"
         } else {
-            return "Нажми для записи"
+            return "Нажми для записи (макс. 10 мин)"
         }
     }
 
