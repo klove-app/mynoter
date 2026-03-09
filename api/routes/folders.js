@@ -3,11 +3,15 @@ import pool from "../db.js";
 
 export const foldersRouter = Router();
 
-// GET /api/folders
+// GET /api/folders (with note counts)
 foldersRouter.get("/", async (_req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM folders ORDER BY name ASC"
+      `SELECT f.*, COALESCE(cnt.c, 0)::int AS note_count
+       FROM folders f
+       LEFT JOIN (SELECT folder_id, COUNT(*) AS c FROM notes GROUP BY folder_id) cnt
+         ON f.id = cnt.folder_id
+       ORDER BY f.name ASC`
     );
     res.json(result.rows);
   } catch (err) {

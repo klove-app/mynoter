@@ -62,10 +62,10 @@ enum HTMLConverter {
 
         var html = String(data: data, encoding: .utf8) ?? attributedString.string
 
-        // Strip the auto-generated <html>/<head>/<body> wrappers
-        if let bodyStart = html.range(of: "<body>"),
-           let bodyEnd = html.range(of: "</body>") {
-            html = String(html[bodyStart.upperBound..<bodyEnd.lowerBound])
+        if let bodyStart = html.range(of: "<body", options: .caseInsensitive),
+           let bodyTagEnd = html[bodyStart.upperBound...].range(of: ">"),
+           let bodyClose = html.range(of: "</body>", options: .caseInsensitive) {
+            html = String(html[bodyTagEnd.upperBound..<bodyClose.lowerBound])
         }
 
         return html.trimmingCharacters(in: .whitespacesAndNewlines)

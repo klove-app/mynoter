@@ -76,8 +76,9 @@ async function formatWithClaude(transcription) {
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
   const anthropic = new Anthropic({ apiKey });
+  const model = process.env.CLAUDE_MODEL || "claude-haiku-4-20250414";
   const message = await anthropic.messages.create({
-    model: "claude-3-5-haiku-20241022",
+    model,
     max_tokens: 4096,
     messages: [
       {
@@ -102,7 +103,9 @@ ${transcription}`,
     ],
   });
 
-  return message.content[0].text;
+  let text = message.content[0].text;
+  text = text.replace(/^```html?\s*/i, "").replace(/\s*```\s*$/, "");
+  return text.trim();
 }
 
 function extractTitle(html, rawText) {

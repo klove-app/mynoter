@@ -1,5 +1,5 @@
 import Foundation
 
 enum Config {
-    static let apiBaseURL = "http://localhost:3000"
+    static let apiBaseURL = "https://mynoter-production.up.railway.app"
 }

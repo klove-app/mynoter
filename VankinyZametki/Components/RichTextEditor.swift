@@ -16,38 +16,46 @@ struct RichTextEditor: UIViewRepresentable {
         textView.isEditable = true
         textView.isScrollEnabled = true
         textView.allowsEditingTextAttributes = true
-        textView.font = .systemFont(ofSize: 16)
-        textView.textContainerInset = UIEdgeInsets(top: 12, left: 8, bottom: 60, right: 8)
+        textView.font = .systemFont(ofSize: 17)
+        textView.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 80, right: 12)
         textView.backgroundColor = .clear
         textView.autocorrectionType = .yes
         textView.spellCheckingType = .yes
         textView.smartQuotesType = .yes
         textView.smartDashesType = .yes
+        textView.keyboardDismissMode = .interactiveWithAccessory
+        textView.alwaysBounceVertical = true
 
-        if !htmlContent.isEmpty {
-            textView.attributedText = HTMLConverter.attributedString(from: htmlContent)
-        }
-
+        context.coordinator.textView = textView
+        context.coordinator.loadHTML(htmlContent, into: textView)
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
-        guard !context.coordinator.isEditing else { return }
+        let coordinator = context.coordinator
+        guard !coordinator.isEditing else { return }
 
-        let currentHTML = HTMLConverter.html(from: textView.attributedText)
-        if currentHTML != htmlContent && !htmlContent.isEmpty {
-            let oldRange = textView.selectedRange
-            textView.attributedText = HTMLConverter.attributedString(from: htmlContent)
-            textView.selectedRange = oldRange
+        if htmlContent != coordinator.lastSetHTML {
+            coordinator.loadHTML(htmlContent, into: textView)
         }
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: RichTextEditor
         var isEditing = false
+        var lastSetHTML: String = ""
+        weak var textView: UITextView?
 
         init(_ parent: RichTextEditor) {
             self.parent = parent
+        }
+
+        func loadHTML(_ html: String, into textView: UITextView) {
+            lastSetHTML = html
+            guard !html.isEmpty else { return }
+            let oldRange = textView.selectedRange
+            textView.attributedText = HTMLConverter.attributedString(from: html)
+            textView.selectedRange = oldRange
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
@@ -56,11 +64,15 @@ struct RichTextEditor: UIViewRepresentable {
 
         func textViewDidEndEditing(_ textView: UITextView) {
             isEditing = false
-            parent.htmlContent = HTMLConverter.html(from: textView.attributedText)
+            let html = HTMLConverter.html(from: textView.attributedText)
+            lastSetHTML = html
+            parent.htmlContent = html
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            parent.htmlContent = HTMLConverter.html(from: textView.attributedText)
+            let html = HTMLConverter.html(from: textView.attributedText)
+            lastSetHTML = html
+            parent.htmlContent = html
             parent.selectedRange = textView.selectedRange
             parent.onTextChange?()
         }
@@ -110,16 +122,16 @@ extension UITextView {
             if currentBg != nil {
                 mutable.removeAttribute(.backgroundColor, range: range)
             } else {
-                mutable.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.4), range: range)
+                mutable.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.35), range: range)
             }
         case .code:
-            let monoFont = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            let monoFont = UIFont.monospacedSystemFont(ofSize: 15, weight: .regular)
             mutable.addAttribute(.font, value: monoFont, range: range)
             mutable.addAttribute(.backgroundColor, value: UIColor.systemGray5, range: range)
         case .clearFormatting:
             let plain = mutable.string
             let cleaned = NSMutableAttributedString(string: plain, attributes: [
-                .font: UIFont.systemFont(ofSize: 16),
+                .font: UIFont.systemFont(ofSize: 17),
                 .foregroundColor: UIColor.label
             ])
             mutable.replaceCharacters(in: NSRange(location: 0, length: mutable.length), with: cleaned)
@@ -159,7 +171,7 @@ extension UITextView {
     private func insertListPrefix(_ prefix: String, in text: NSMutableAttributedString) {
         let insertionPoint = selectedRange.location
         let lineRange = (text.string as NSString).lineRange(for: NSRange(location: insertionPoint, length: 0))
-        let prefixAttr = NSAttributedString(string: prefix, attributes: [.font: UIFont.systemFont(ofSize: 16)])
+        let prefixAttr = NSAttributedString(string: prefix, attributes: [.font: UIFont.systemFont(ofSize: 17)])
         text.insert(prefixAttr, at: lineRange.location)
         attributedText = text
         selectedRange = NSRange(location: lineRange.location + prefix.count, length: 0)

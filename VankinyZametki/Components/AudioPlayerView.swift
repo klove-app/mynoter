@@ -10,26 +10,65 @@ struct AudioPlayerView: View {
     @State private var duration: TimeInterval = 0
     @State private var timer: Timer?
     @State private var loadError: String?
+    @State private var isLoading = true
 
     var body: some View {
-        VStack(spacing: 8) {
+        Group {
             if let error = loadError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.tertiarySystemFill))
+                )
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     Button {
                         togglePlayback()
                     } label: {
-                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(Color.accentColor)
+                        ZStack {
+                            if isLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(Color.accentColor.gradient)
+                        )
                     }
+                    .disabled(isLoading)
 
-                    VStack(spacing: 4) {
-                        ProgressView(value: progress, total: max(duration, 1))
-                            .tint(.accentColor)
+                    VStack(spacing: 6) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color(.tertiarySystemFill))
+                                    .frame(height: 4)
+
+                                Capsule()
+                                    .fill(Color.accentColor)
+                                    .frame(
+                                        width: duration > 0 ? geo.size.width * (progress / duration) : 0,
+                                        height: 4
+                                    )
+                                    .animation(.linear(duration: 0.1), value: progress)
+                            }
+                            .frame(maxHeight: .infinity, alignment: .center)
+                        }
+                        .frame(height: 16)
 
                         HStack {
                             Text(formatTime(progress))
@@ -39,15 +78,15 @@ struct AudioPlayerView: View {
                             Spacer()
                             Text(formatTime(duration))
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.tertiary)
                                 .monospacedDigit()
                         }
                     }
                 }
                 .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(.tertiarySystemFill))
                 )
             }
         }
@@ -63,6 +102,7 @@ struct AudioPlayerView: View {
     private func loadAudio() async {
         guard let url = URL(string: urlString) else {
             loadError = "Неверный URL аудио"
+            isLoading = false
             return
         }
 
@@ -71,8 +111,10 @@ struct AudioPlayerView: View {
             player = try AVAudioPlayer(data: data)
             player?.prepareToPlay()
             duration = player?.duration ?? 0
+            isLoading = false
         } catch {
-            loadError = "Не удалось загрузить аудио"
+            loadError = "Не удалось загрузить"
+            isLoading = false
         }
     }
 

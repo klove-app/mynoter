@@ -1,38 +1,60 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab: Tab = .notes
-
-    enum Tab {
-        case notes, folders, settings
-    }
+    @State private var selectedTab = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
-                NoteListView()
-            }
-            .tabItem {
-                Label("Заметки", systemImage: "note.text")
-            }
-            .tag(Tab.notes)
+        Color(.systemBackground)
+            .ignoresSafeArea()
+            .overlay {
+                VStack(spacing: 0) {
+                    tabContent
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            NavigationStack {
-                FolderListView()
-            }
-            .tabItem {
-                Label("Папки", systemImage: "folder")
-            }
-            .tag(Tab.folders)
+                    Divider()
 
-            NavigationStack {
-                SettingsView()
+                    HStack(spacing: 0) {
+                        tabBtn("doc.text", "doc.text.fill", "Заметки", 0)
+                        tabBtn("folder", "folder.fill", "Папки", 1)
+                        tabBtn("gearshape", "gearshape.fill", "Настройки", 2)
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+                    .background(Color(.systemBackground))
+                }
             }
-            .tabItem {
-                Label("Настройки", systemImage: "gearshape")
-            }
-            .tag(Tab.settings)
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        ZStack {
+            NoteListView()
+                .opacity(selectedTab == 0 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 0)
+
+            FolderListView()
+                .opacity(selectedTab == 1 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 1)
+
+            SettingsView()
+                .opacity(selectedTab == 2 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 2)
         }
-        .tint(.accentColor)
+    }
+
+    private func tabBtn(_ icon: String, _ active: String, _ label: String, _ tag: Int) -> some View {
+        Button {
+            selectedTab = tag
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: selectedTab == tag ? active : icon)
+                    .font(.system(size: 18))
+                    .frame(height: 22)
+                Text(label)
+                    .font(.system(size: 10))
+            }
+            .foregroundStyle(selectedTab == tag ? Color.accentColor : .secondary)
+            .frame(maxWidth: .infinity)
+        }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import AVFoundation
 
 struct VoiceRecorderView: View {
     @EnvironmentObject private var noteStore: NoteStore
@@ -9,9 +10,11 @@ struct VoiceRecorderView: View {
     @State private var processingStatus = ""
     @State private var createdNote: Note?
     @State private var showError = false
+    @State private var isPlaying = false
+    @State private var player: AVAudioPlayer?
 
     var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: 0) {
             Spacer()
 
             if isProcessing {
@@ -24,15 +27,18 @@ struct VoiceRecorderView: View {
 
             Spacer()
         }
-        .padding()
-        .navigationTitle("Голосовая заметка")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground).ignoresSafeArea())
+        .navigationTitle("Запись")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Закрыть") {
+                    stopPlayback()
                     recorder.cleanup()
                     dismiss()
                 }
+                .foregroundStyle(.secondary)
             }
         }
         .alert("Ошибка", isPresented: $showError) {
@@ -42,144 +48,246 @@ struct VoiceRecorderView: View {
         }
     }
 
+    // MARK: - Recording
+
     private var recordingView: some View {
-        VStack(spacing: 24) {
-            audioVisualization
+        VStack(spacing: 28) {
+            waveformView
 
-            Text(recorder.formattedTime)
-                .font(.system(size: 48, weight: .light, design: .monospaced))
-                .foregroundStyle(recorder.isRecording ? .primary : .secondary)
+            Text(simpleTime)
+                .font(.system(size: 48, weight: .thin, design: .rounded))
+                .foregroundStyle(recorder.isRecording ? .primary : .tertiary)
+                .monospacedDigit()
 
-            HStack(spacing: 40) {
-                if recorder.isRecording {
-                    Button {
-                        _ = recorder.stopRecording()
-                    } label: {
-                        Image(systemName: "stop.circle.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(.red)
-                    }
+            recordControls
 
-                    Button {
-                        finishRecording()
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(.green)
-                    }
-                } else if recorder.recordingURL != nil {
-                    Button {
-                        recorder.cleanup()
-                        recorder.startRecording()
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.secondary)
-                    }
+            Text(statusHint)
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 4)
+        }
+        .padding(.horizontal, 32)
+    }
 
-                    Button {
-                        finishRecording()
-                    } label: {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 56))
-                            .foregroundStyle(.green)
-                    }
-                } else {
-                    Button {
-                        recorder.startRecording()
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(.red)
-                                .frame(width: 72, height: 72)
-                            Circle()
-                                .fill(.white)
-                                .frame(width: 24, height: 24)
-                        }
-                    }
-                }
-            }
+    private var simpleTime: String {
+        let total = Int(recorder.recordingTime)
+        let m = total / 60
+        let s = total % 60
+        return String(format: "%d:%02d", m, s)
+    }
 
-            if !recorder.isRecording && recorder.recordingURL == nil {
-                Text("Нажми для начала записи")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+    private var statusHint: String {
+        if recorder.isRecording {
+            return "Запись..."
+        } else if recorder.recordingURL != nil {
+            return "Прослушай или отправь на распознавание"
+        } else {
+            return "Нажми для записи"
         }
     }
 
-    private var audioVisualization: some View {
+    // MARK: - Waveform
+
+    private var waveformView: some View {
         HStack(spacing: 3) {
-            ForEach(0..<30, id: \.self) { i in
+            ForEach(0..<40, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(recorder.isRecording ? Color.accentColor : Color.secondary.opacity(0.3))
-                    .frame(width: 4, height: barHeight(for: i))
-                    .animation(
-                        .easeInOut(duration: 0.1),
-                        value: recorder.audioLevel
-                    )
+                    .fill(barColor(for: i))
+                    .frame(width: 3, height: barHeight(for: i))
+                    .animation(.easeOut(duration: 0.08), value: recorder.audioLevel)
             }
         }
-        .frame(height: 80)
+        .frame(height: 64)
+    }
+
+    private func barColor(for index: Int) -> Color {
+        guard recorder.isRecording else {
+            return Color.accentColor.opacity(0.15)
+        }
+        let progress = Double(index) / 40.0
+        return Color.accentColor.opacity(0.4 + progress * 0.5)
     }
 
     private func barHeight(for index: Int) -> CGFloat {
-        guard recorder.isRecording else { return 8 }
-        let base: CGFloat = 8
-        let maxH: CGFloat = 80
-        let variation = sin(Double(index) * 0.5 + recorder.recordingTime * 3) * 0.3 + 0.7
+        guard recorder.isRecording else { return 3 }
+        let base: CGFloat = 3
+        let maxH: CGFloat = 64
+        let wave = sin(Double(index) * 0.4 + recorder.recordingTime * 3.0)
+        let variation = wave * 0.35 + 0.65
         return base + (maxH - base) * CGFloat(recorder.audioLevel) * CGFloat(variation)
     }
 
-    private var processingView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text(processingStatus)
-                .font(.headline)
-            Text("Обычно это занимает 10-30 секунд")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    // MARK: - Controls
+
+    private var recordControls: some View {
+        HStack(spacing: 28) {
+            if recorder.isRecording {
+                circleButton(icon: "stop.fill", size: 52, bg: Color(.systemGray4)) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    _ = recorder.stopRecording()
+                }
+
+                circleButton(icon: "arrow.up", size: 60, bg: Color.accentColor, iconWeight: .semibold) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    finishRecording()
+                }
+            } else if recorder.recordingURL != nil {
+                labeledCircleButton(icon: "arrow.counterclockwise", size: 46, bg: Color(.tertiarySystemFill), fgColor: .secondary, label: "Заново") {
+                    stopPlayback()
+                    recorder.cleanup()
+                    recorder.startRecording()
+                }
+
+                labeledCircleButton(icon: isPlaying ? "pause.fill" : "play.fill", size: 46, bg: Color(.tertiarySystemFill), fgColor: .primary, label: "Слушать") {
+                    togglePlayback()
+                }
+
+                labeledCircleButton(icon: "arrow.up", size: 60, bg: Color.accentColor, fgColor: .white, iconWeight: .semibold, label: "Отправить") {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    stopPlayback()
+                    finishRecording()
+                }
+            } else {
+                Button {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    recorder.startRecording()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor.gradient)
+                            .frame(width: 72, height: 72)
+                            .shadow(color: Color.accentColor.opacity(0.3), radius: 12, y: 4)
+
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
         }
     }
 
+    private func circleButton(icon: String, size: CGFloat, bg: Color, fgColor: Color = .white, iconWeight: Font.Weight = .regular, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: size * 0.32, weight: iconWeight))
+                .foregroundStyle(fgColor)
+                .frame(width: size, height: size)
+                .background(Circle().fill(bg))
+        }
+    }
+
+    private func labeledCircleButton(icon: String, size: CGFloat, bg: Color, fgColor: Color = .white, iconWeight: Font.Weight = .regular, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.32, weight: iconWeight))
+                    .foregroundStyle(fgColor)
+                    .frame(width: size, height: size)
+                    .background(Circle().fill(bg))
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Playback
+
+    private func togglePlayback() {
+        if isPlaying {
+            stopPlayback()
+        } else {
+            startPlayback()
+        }
+    }
+
+    private func startPlayback() {
+        guard let url = recorder.recordingURL else { return }
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback)
+            try AVAudioSession.sharedInstance().setActive(true)
+            player = try AVAudioPlayer(contentsOf: url)
+            player?.play()
+            isPlaying = true
+        } catch {
+            recorder.errorMessage = "Не удалось воспроизвести: \(error.localizedDescription)"
+            showError = true
+        }
+    }
+
+    private func stopPlayback() {
+        player?.stop()
+        player = nil
+        isPlaying = false
+    }
+
+    // MARK: - Processing
+
+    private var processingView: some View {
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .stroke(Color.accentColor.opacity(0.15), lineWidth: 4)
+                    .frame(width: 64, height: 64)
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(Color.accentColor)
+            }
+
+            VStack(spacing: 6) {
+                Text(processingStatus)
+                    .font(.headline)
+                Text("Обычно 10-30 сек")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    // MARK: - Success
+
     private func successView(note: Note) -> some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
+                .font(.system(size: 52))
                 .foregroundStyle(.green)
-            Text("Заметка создана!")
-                .font(.title2.bold())
-            Text(note.displayTitle)
-                .font(.headline)
-                .foregroundStyle(.secondary)
+
+            VStack(spacing: 4) {
+                Text("Заметка создана")
+                    .font(.headline)
+                Text(note.displayTitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
 
             if !note.snippet.isEmpty {
                 Text(note.snippet)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                    .lineLimit(3)
+                    .padding(.horizontal, 24)
             }
-
-            Button {
-                dismiss()
-            } label: {
-                Text("Готово")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .padding(.horizontal, 40)
+        }
+        .padding(.horizontal, 32)
+        .task {
+            try? await Task.sleep(for: .seconds(2))
+            dismiss()
         }
     }
 
+    // MARK: - Logic
+
     private func finishRecording() {
+        guard !isProcessing else { return }
+
         if recorder.isRecording {
             _ = recorder.stopRecording()
         }
 
         guard let audioData = recorder.getRecordingData() else {
-            recorder.errorMessage = "Не удалось прочитать аудио файл"
+            recorder.errorMessage = "Не удалось прочитать аудио"
             showError = true
             return
         }
@@ -189,14 +297,13 @@ struct VoiceRecorderView: View {
 
         Task {
             do {
-                processingStatus = "Распознаю речь и форматирую..."
+                processingStatus = "Распознаю речь..."
                 let note = try await APIService.shared.processVoiceNote(audioData: audioData)
-
                 await noteStore.loadNotes()
                 createdNote = note
                 recorder.cleanup()
             } catch {
-                recorder.errorMessage = "Ошибка обработки: \(error.localizedDescription)"
+                recorder.errorMessage = "Ошибка: \(error.localizedDescription)"
                 showError = true
                 isProcessing = false
             }
