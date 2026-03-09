@@ -16,6 +16,7 @@ struct NoteEditorView: View {
     @State private var showFolderPicker = false
     @State private var showDeleteConfirm = false
     @State private var showVoiceAppend = false
+    @State private var pendingVoiceHTML: String?
 
     init(note: Note) {
         _note = State(initialValue: note)
@@ -102,15 +103,22 @@ struct NoteEditorView: View {
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerSheet(selectedFolderId: $note.folderId)
         }
-        .sheet(isPresented: $showVoiceAppend) {
+        .sheet(isPresented: $showVoiceAppend, onDismiss: {
+            guard let html = pendingVoiceHTML else { return }
+            pendingVoiceHTML = nil
+            findTextView()?.resignFirstResponder()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if htmlContent.isEmpty {
+                    htmlContent = html
+                } else {
+                    htmlContent += "<hr>" + html
+                }
+                scheduleAutoSave()
+            }
+        }) {
             NavigationStack {
                 VoiceRecorderView { appendedHTML in
-                    if htmlContent.isEmpty {
-                        htmlContent = appendedHTML
-                    } else {
-                        htmlContent += "<hr>" + appendedHTML
-                    }
-                    scheduleAutoSave()
+                    pendingVoiceHTML = appendedHTML
                 }
             }
             .presentationDragIndicator(.visible)
