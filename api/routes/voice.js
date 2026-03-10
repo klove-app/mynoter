@@ -91,9 +91,11 @@ voiceRouter.post("/normalize", async (req, res) => {
   }
 
   try {
-    const normalized = await normalizeWithClaude(html);
-    console.log("[normalize] Success, result length:", normalized.length);
-    res.json({ html: normalized });
+    let result = programmaticNormalize(html);
+    console.log("[normalize] After programmatic fix, length:", result.length);
+    result = await normalizeWithClaude(result);
+    console.log("[normalize] After Claude, result length:", result.length);
+    res.json({ html: result });
   } catch (err) {
     console.error("[normalize] Error:", err);
     res.status(500).json({ error: err.message });
@@ -166,42 +168,66 @@ ${transcription}`;
   return text.trim();
 }
 
+function programmaticNormalize(html) {
+  let result = html;
+
+  // Fix: <ul><li><ul><li>text</li></ul></li></ul> → <ul><li>text</li></ul>
+  // Flatten pointless single-child nested lists (up to 5 levels deep)
+  for (let i = 0; i < 5; i++) {
+    result = result.replace(
+      /<ul[^>]*>\s*<li[^>]*>\s*<ul[^>]*>([\s\S]*?)<\/ul>\s*<\/li>\s*<\/ul>/gi,
+      "<ul>$1</ul>"
+    );
+  }
+
+  // Fix: <li><ul><li>text</li></ul></li> → <li>text</li> (nested list inside li with no other content)
+  for (let i = 0; i < 5; i++) {
+    result = result.replace(
+      /<li[^>]*>\s*<ul[^>]*>\s*<li([^>]*)>([\s\S]*?)<\/li>\s*<\/ul>\s*<\/li>/gi,
+      "<li$1>$2</li>"
+    );
+  }
+
+  // Remove empty <p></p>, <p><br></p>, <p>&nbsp;</p>
+  result = result.replace(/<p[^>]*>\s*(<br\s*\/?>|\s|&nbsp;)*\s*<\/p>/gi, "");
+
+  // Remove empty <li></li>
+  result = result.replace(/<li[^>]*>\s*<\/li>/gi, "");
+
+  // Remove empty <ul></ul> or <ol></ol>
+  result = result.replace(/<(ul|ol)[^>]*>\s*<\/(ul|ol)>/gi, "");
+
+  // Collapse multiple <br> into single
+  result = result.replace(/(<br\s*\/?\s*>){2,}/gi, "<br>");
+
+  // Remove excessive whitespace between tags
+  result = result.replace(/>\s{3,}</g, "> <");
+
+  return result;
+}
+
 async function normalizeWithClaude(htmlContent) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
-  const prompt = `Ты ассистент для нормализации форматирования заметок. Тебе дан HTML-контент заметки, который может содержать проблемы форматирования.
+  const prompt = `Нормализуй HTML-форматирование заметки. Верни ТОЛЬКО исправленный HTML без обёрток и пояснений.
 
-Твоя задача — ИСПРАВИТЬ форматирование, НЕ меняя смысл и содержание текста.
+ПРАВИЛА:
+1. Если <ul> содержит только один <li> с вложенным <ul> — развернуть, убрать лишний уровень вложенности
+2. Пример: <ul><li><ul><li>текст</li></ul></li></ul> → <ul><li>текст</li></ul>  
+3. Убрать пустые <p>, <li>, <ul>, <ol>
+4. Убрать лишние <br> подряд
+5. НЕ менять текст, заголовки, <b>, <i>, <mark>, <img>, <table>, <span>
+6. НЕ добавлять и НЕ удалять контент
 
-Что нужно исправить:
-- Двойные/тройные маркеры списков (•  •  текст → • текст). Убрать лишние вложенности если они бессмысленные
-- Если список из одних подсписков без родительского пункта — сделать плоским
-- Пустые параграфы, лишние переносы строк
-- Некорректные вложенные списки (ul внутри ul без li)
-- Дублирующиеся пробелы и отступы
-- Лишние пустые теги
-- Смешанный формат (таблица и списки которые можно упростить)
-- Если текст просто плоский без структуры — разбить на логические абзацы
-- Исправить мелкие опечатки если заметны
-
-Чего НЕЛЬЗЯ делать:
-- Менять смысл текста, удалять или добавлять информацию
-- Менять заголовки на другие
-- Добавлять жирный/курсив/маркер где его не было (если это не исправление явной ошибки)
-- Удалять таблицы, картинки (<img>), теги (<mark>), сноски
-- Менять структуру таблиц
-
-Отвечай ТОЛЬКО нормализованным HTML, без \`\`\` обёрток и пояснений.
-
-HTML заметки:
+HTML:
 ${htmlContent}`;
 
   const anthropic = new Anthropic({ apiKey });
   const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
   const message = await anthropic.messages.create({
     model,
-    max_tokens: 8192,
+    max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
