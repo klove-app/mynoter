@@ -82,6 +82,22 @@ voiceRouter.post("/format-text", async (req, res) => {
   }
 });
 
+// POST /api/voice/normalize — clean up and normalize existing HTML content
+voiceRouter.post("/normalize", async (req, res) => {
+  const { html } = req.body;
+  if (!html) {
+    return res.status(400).json({ error: "No HTML content provided" });
+  }
+
+  try {
+    const normalized = await normalizeWithClaude(html);
+    res.json({ html: normalized });
+  } catch (err) {
+    console.error("Normalize error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 async function transcribeWithWhisper(filePath) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
@@ -140,6 +156,50 @@ ${transcription}`;
   const message = await anthropic.messages.create({
     model,
     max_tokens: 4096,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  let text = message.content[0].text;
+  text = text.replace(/^```html?\s*/i, "").replace(/\s*```\s*$/, "");
+  return text.trim();
+}
+
+async function normalizeWithClaude(htmlContent) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+
+  const prompt = `Ты ассистент для нормализации форматирования заметок. Тебе дан HTML-контент заметки, который может содержать проблемы форматирования.
+
+Твоя задача — ИСПРАВИТЬ форматирование, НЕ меняя смысл и содержание текста.
+
+Что нужно исправить:
+- Двойные/тройные маркеры списков (•  •  текст → • текст). Убрать лишние вложенности если они бессмысленные
+- Если список из одних подсписков без родительского пункта — сделать плоским
+- Пустые параграфы, лишние переносы строк
+- Некорректные вложенные списки (ul внутри ul без li)
+- Дублирующиеся пробелы и отступы
+- Лишние пустые теги
+- Смешанный формат (таблица и списки которые можно упростить)
+- Если текст просто плоский без структуры — разбить на логические абзацы
+- Исправить мелкие опечатки если заметны
+
+Чего НЕЛЬЗЯ делать:
+- Менять смысл текста, удалять или добавлять информацию
+- Менять заголовки на другие
+- Добавлять жирный/курсив/маркер где его не было (если это не исправление явной ошибки)
+- Удалять таблицы, картинки (<img>), теги (<mark>), сноски
+- Менять структуру таблиц
+
+Отвечай ТОЛЬКО нормализованным HTML, без \`\`\` обёрток и пояснений.
+
+HTML заметки:
+${htmlContent}`;
+
+  const anthropic = new Anthropic({ apiKey });
+  const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
+  const message = await anthropic.messages.create({
+    model,
+    max_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
   });
 
