@@ -85,15 +85,17 @@ voiceRouter.post("/format-text", async (req, res) => {
 // POST /api/voice/normalize — clean up and normalize existing HTML content
 voiceRouter.post("/normalize", async (req, res) => {
   const { html } = req.body;
+  console.log("[normalize] Request received, HTML length:", html?.length || 0);
   if (!html) {
     return res.status(400).json({ error: "No HTML content provided" });
   }
 
   try {
     const normalized = await normalizeWithClaude(html);
+    console.log("[normalize] Success, result length:", normalized.length);
     res.json({ html: normalized });
   } catch (err) {
-    console.error("Normalize error:", err);
+    console.error("[normalize] Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
