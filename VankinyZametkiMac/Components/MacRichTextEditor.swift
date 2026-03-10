@@ -146,7 +146,7 @@ struct MacRichTextEditor: NSViewRepresentable {
     var onImagePasted: ((Data, String) -> Void)?
     var onTableInsert: (() -> Void)?
     var onDiagramFromSelection: ((String, String) -> Void)?
-    var onDiagramClicked: ((String, String, NSRange) -> Void)?
+    var onDiagramClicked: ((String, String, NSRange, NSImage?) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -357,7 +357,12 @@ struct MacRichTextEditor: NSViewRepresentable {
 
         @objc func editDiagramAction(_ sender: NSMenuItem) {
             guard let (imageURL, mermaidCode, range) = sender.representedObject as? (String, String, NSRange) else { return }
-            parent.onDiagramClicked?(imageURL, mermaidCode, range)
+            var img: NSImage?
+            if let storage = textView?.textStorage, range.location < storage.length,
+               let attachment = storage.attribute(.attachment, at: range.location, effectiveRange: nil) as? NSTextAttachment {
+                img = attachment.image
+            }
+            parent.onDiagramClicked?(imageURL, mermaidCode, range, img)
         }
 
         @objc func handleDiagramClick(_ gesture: NSClickGestureRecognizer) {
@@ -370,8 +375,13 @@ struct MacRichTextEditor: NSViewRepresentable {
             guard let mermaidCode = attrs[vzDiagramMermaidKey] as? String,
                   let imageURL = attrs[vzImageURLKey] as? String else { return }
 
+            var img: NSImage?
+            if let attachment = attrs[.attachment] as? NSTextAttachment {
+                img = attachment.image
+            }
+
             let range = NSRange(location: charIndex, length: 1)
-            parent.onDiagramClicked?(imageURL, mermaidCode, range)
+            parent.onDiagramClicked?(imageURL, mermaidCode, range, img)
         }
 
         @objc func diagramContextAction(_ sender: NSMenuItem) {

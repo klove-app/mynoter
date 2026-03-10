@@ -39,6 +39,7 @@ struct NoteEditorView: View {
     @State private var editingDiagramMermaid = ""
     @State private var editingDiagramPosition = 0
     @State private var editingDiagramDescription = ""
+    @State private var editingDiagramImage: UIImage?
 
     var bookContext: BookContext?
     private var isBookChapter: Bool { bookContext != nil }
@@ -81,11 +82,12 @@ struct NoteEditorView: View {
                 onDiagramFromSelection: { text, type, position in
                     generateDiagramFromSelection(text: text, type: type, insertPosition: position)
                 },
-                onDiagramClicked: { url, mermaid, position in
+                onDiagramClicked: { url, mermaid, position, image in
                     editingDiagramURL = url
                     editingDiagramMermaid = mermaid
                     editingDiagramPosition = position
                     editingDiagramDescription = ""
+                    editingDiagramImage = image
                     showDiagramEditor = true
                 }
             )
@@ -782,28 +784,22 @@ struct NoteEditorView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    AsyncImage(url: URL(string: editingDiagramURL)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(maxWidth: .infinity)
-                                .cornerRadius(10)
-                        case .failure:
-                            VStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .font(.largeTitle)
-                                    .foregroundStyle(.secondary)
-                                Text("Не удалось загрузить")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                        default:
-                            ProgressView()
-                                .frame(maxWidth: .infinity, minHeight: 200)
+                    if let uiImage = editingDiagramImage {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .cornerRadius(10)
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "photo")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("Изображение недоступно")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
+                        .frame(maxWidth: .infinity, minHeight: 200)
                     }
 
                     DisclosureGroup("Mermaid-код") {
@@ -886,6 +882,8 @@ struct NoteEditorView: View {
 
                 let (data, _) = try await URLSession.shared.data(from: URL(string: result.url)!)
                 guard let image = UIImage(data: data) else { return }
+
+                editingDiagramImage = image
 
                 let maxWidth: CGFloat = UIScreen.main.bounds.width - 48
                 let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0

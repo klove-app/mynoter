@@ -7,7 +7,7 @@ struct RichTextEditor: UIViewRepresentable {
     var onTextChange: (() -> Void)?
     var onSlashTriggered: (() -> Void)?
     var onDiagramFromSelection: ((String, String, Int) -> Void)?
-    var onDiagramClicked: ((String, String, Int) -> Void)?
+    var onDiagramClicked: ((String, String, Int, UIImage?) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -69,7 +69,11 @@ struct RichTextEditor: UIViewRepresentable {
             guard let mermaid = attrs[vzDiagramMermaidKey] as? String,
                   let imageURL = attrs[vzImageURLKey] as? String else { return }
 
-            parent.onDiagramClicked?(imageURL, mermaid, offset)
+            var img: UIImage?
+            if let attachment = attrs[.attachment] as? NSTextAttachment {
+                img = attachment.image
+            }
+            parent.onDiagramClicked?(imageURL, mermaid, offset, img)
         }
 
         func loadHTML(_ html: String, into textView: UITextView) {
@@ -87,11 +91,15 @@ struct RichTextEditor: UIViewRepresentable {
                 let attrs = textView.textStorage.attributes(at: range.location, effectiveRange: nil)
                 if let mermaid = attrs[vzDiagramMermaidKey] as? String,
                    let imageURL = attrs[vzImageURLKey] as? String {
+                    var img: UIImage?
+                    if let attachment = attrs[.attachment] as? NSTextAttachment {
+                        img = attachment.image
+                    }
                     let editAction = UIAction(
                         title: "Редактировать диаграмму",
                         image: UIImage(systemName: "pencil.and.outline")
                     ) { [weak self] _ in
-                        self?.parent.onDiagramClicked?(imageURL, mermaid, range.location)
+                        self?.parent.onDiagramClicked?(imageURL, mermaid, range.location, img)
                     }
                     let deleteAction = UIAction(
                         title: "Удалить диаграмму",

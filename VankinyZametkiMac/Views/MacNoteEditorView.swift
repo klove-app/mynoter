@@ -31,6 +31,7 @@ struct MacNoteEditorView: View {
     @State private var editingDiagramMermaid = ""
     @State private var editingDiagramRange = NSRange(location: 0, length: 0)
     @State private var editingDiagramDescription = ""
+    @State private var editingDiagramImage: NSImage?
 
     var bookContext: MacBookContext?
     private var isBookChapter: Bool { bookContext != nil }
@@ -103,11 +104,12 @@ struct MacNoteEditorView: View {
                         onDiagramFromSelection: { text, type in
                             generateDiagramFromSelection(text: text, type: type)
                         },
-                        onDiagramClicked: { url, mermaid, range in
+                        onDiagramClicked: { url, mermaid, range, image in
                             editingDiagramURL = url
                             editingDiagramMermaid = mermaid
                             editingDiagramRange = range
                             editingDiagramDescription = ""
+                            editingDiagramImage = image
                             showDiagramEditor = true
                         }
                     )
@@ -578,30 +580,25 @@ struct MacNoteEditorView: View {
             Divider()
 
             ScrollView {
-                AsyncImage(url: URL(string: editingDiagramURL)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .cornerRadius(8)
-                    case .failure:
-                        VStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                            Text("Не удалось загрузить")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                    default:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
+                if let nsImage = editingDiagramImage {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .cornerRadius(8)
+                        .padding(20)
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("Изображение недоступно")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .padding(20)
                 }
-                .padding(20)
             }
             .frame(maxHeight: 400)
 
@@ -676,6 +673,11 @@ struct MacNoteEditorView: View {
                 editingDiagramURL = result.url
                 editingDiagramMermaid = result.mermaidCode
                 editingDiagramDescription = ""
+
+                if let url = URL(string: result.url) {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    editingDiagramImage = NSImage(data: data)
+                }
 
                 replaceDiagramInEditor(at: oldRange, newURL: result.url, mermaidCode: result.mermaidCode)
                 scheduleAutoSave()
