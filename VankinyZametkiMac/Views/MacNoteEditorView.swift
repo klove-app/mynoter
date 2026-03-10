@@ -722,7 +722,6 @@ struct MacNoteEditorView: View {
             do {
                 let result = try await APIService.shared.generateDiagram(description: text, type: type)
                 triggerFormat(.insertDiagramResult(url: result.url, mermaidCode: result.mermaidCode))
-                scheduleAutoSave()
             } catch {
                 print("Diagram from selection error: \(error)")
             }

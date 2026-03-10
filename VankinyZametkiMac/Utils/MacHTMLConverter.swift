@@ -204,13 +204,13 @@ enum MacHTMLConverter {
             html = String(html[bodyTagEnd.upperBound..<bodyClose.lowerBound])
         }
 
-        for (offset, url) in imageMap {
+        for (offset, url) in imageMap.sorted(by: { $0.key < $1.key }) {
             if let base64Range = html.range(of: "<img[^>]*src=\"data:image[^\"]*\"[^>]*>",
                                              options: .regularExpression) {
                 var attrs = "src=\"\(url)\" style=\"max-width:100%;height:auto;border-radius:6px;\""
                 if let mermaid = diagramMermaidMap[offset] {
-                    let escaped = mermaid.replacingOccurrences(of: "\"", with: "&quot;")
-                    attrs += " data-mermaid=\"\(escaped)\" class=\"vz-diagram\""
+                    let b64 = Data(mermaid.utf8).base64EncodedString()
+                    attrs += " data-mermaid-b64=\"\(b64)\" class=\"vz-diagram\""
                 }
                 html = html.replacingCharacters(in: base64Range, with: "<img \(attrs)>")
             }
@@ -260,15 +260,21 @@ enum MacHTMLConverter {
         }
 
         var images: [ImageInfo] = []
-        let mermaidRegex = try? NSRegularExpression(pattern: "data-mermaid=\"([^\"]+)\"", options: .caseInsensitive)
+        let b64Regex = try? NSRegularExpression(pattern: "data-mermaid-b64=\"([^\"]+)\"", options: .caseInsensitive)
+        let legacyRegex = try? NSRegularExpression(pattern: "data-mermaid=\"([^\"]+)\"", options: .caseInsensitive)
         for match in matches {
             if let urlRange = Range(match.range(at: 1), in: html) {
                 let url = String(html[urlRange])
                 var mermaid: String?
                 if let fullRange = Range(match.range, in: html) {
                     let tag = String(html[fullRange])
-                    if let mermaidMatch = mermaidRegex?.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
-                       let mRange = Range(mermaidMatch.range(at: 1), in: tag) {
+                    if let b64Match = b64Regex?.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
+                       let mRange = Range(b64Match.range(at: 1), in: tag),
+                       let decoded = Data(base64Encoded: String(tag[mRange])),
+                       let code = String(data: decoded, encoding: .utf8) {
+                        mermaid = code
+                    } else if let legacyMatch = legacyRegex?.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
+                              let mRange = Range(legacyMatch.range(at: 1), in: tag) {
                         mermaid = String(tag[mRange]).replacingOccurrences(of: "&quot;", with: "\"")
                     }
                 }
