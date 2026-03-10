@@ -2,6 +2,7 @@ import AppKit
 
 let vzImageURLKey = NSAttributedString.Key("VZImageURL")
 let vzTableHTMLKey = NSAttributedString.Key("VZTableHTML")
+let vzDiagramMermaidKey = NSAttributedString.Key("VZDiagramMermaid")
 
 @MainActor
 enum MacHTMLConverter {
@@ -167,6 +168,7 @@ enum MacHTMLConverter {
         guard attributedString.length > 0 else { return "" }
 
         var imageMap: [Int: String] = [:]
+        var diagramMermaidMap: [Int: String] = [:]
         var tableMap: [Int: String] = [:]
 
         attributedString.enumerateAttributes(
@@ -175,6 +177,9 @@ enum MacHTMLConverter {
         ) { attrs, range, _ in
             if let url = attrs[vzImageURLKey] as? String {
                 imageMap[range.location] = url
+            }
+            if let mermaid = attrs[vzDiagramMermaidKey] as? String {
+                diagramMermaidMap[range.location] = mermaid
             }
             if let tableHTML = attrs[vzTableHTMLKey] as? String {
                 tableMap[range.location] = tableHTML
@@ -199,11 +204,15 @@ enum MacHTMLConverter {
             html = String(html[bodyTagEnd.upperBound..<bodyClose.lowerBound])
         }
 
-        for (_, url) in imageMap {
+        for (offset, url) in imageMap {
             if let base64Range = html.range(of: "<img[^>]*src=\"data:image[^\"]*\"[^>]*>",
                                              options: .regularExpression) {
-                html = html.replacingCharacters(in: base64Range,
-                    with: "<img src=\"\(url)\" style=\"max-width:100%;height:auto;border-radius:6px;\">")
+                var attrs = "src=\"\(url)\" style=\"max-width:100%;height:auto;border-radius:6px;\""
+                if let mermaid = diagramMermaidMap[offset] {
+                    let escaped = mermaid.replacingOccurrences(of: "\"", with: "&quot;")
+                    attrs += " data-mermaid=\"\(escaped)\" class=\"vz-diagram\""
+                }
+                html = html.replacingCharacters(in: base64Range, with: "<img \(attrs)>")
             }
         }
 
@@ -245,25 +254,44 @@ enum MacHTMLConverter {
         guard let regex = try? NSRegularExpression(pattern: imgPattern, options: .caseInsensitive) else { return }
         let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
 
-        var imageURLs: [String] = []
+        struct ImageInfo {
+            let url: String
+            let mermaidCode: String?
+        }
+
+        var images: [ImageInfo] = []
+        let mermaidRegex = try? NSRegularExpression(pattern: "data-mermaid=\"([^\"]+)\"", options: .caseInsensitive)
         for match in matches {
-            if let range = Range(match.range(at: 1), in: html) {
-                imageURLs.append(String(html[range]))
+            if let urlRange = Range(match.range(at: 1), in: html) {
+                let url = String(html[urlRange])
+                var mermaid: String?
+                if let fullRange = Range(match.range, in: html) {
+                    let tag = String(html[fullRange])
+                    if let mermaidMatch = mermaidRegex?.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
+                       let mRange = Range(mermaidMatch.range(at: 1), in: tag) {
+                        mermaid = String(tag[mRange]).replacingOccurrences(of: "&quot;", with: "\"")
+                    }
+                }
+                images.append(ImageInfo(url: url, mermaidCode: mermaid))
             }
         }
 
-        guard !imageURLs.isEmpty else { return }
+        guard !images.isEmpty else { return }
 
-        var urlIndex = 0
+        var imgIndex = 0
         let fullRange = NSRange(location: 0, length: attrString.length)
         attrString.enumerateAttribute(.attachment, in: fullRange, options: []) { value, range, _ in
-            guard value is NSTextAttachment, urlIndex < imageURLs.count else { return }
-            attrString.addAttribute(vzImageURLKey, value: imageURLs[urlIndex], range: range)
-            urlIndex += 1
+            guard value is NSTextAttachment, imgIndex < images.count else { return }
+            let info = images[imgIndex]
+            attrString.addAttribute(vzImageURLKey, value: info.url, range: range)
+            if let mermaid = info.mermaidCode {
+                attrString.addAttribute(vzDiagramMermaidKey, value: mermaid, range: range)
+            }
+            imgIndex += 1
         }
 
-        for url in imageURLs {
-            loadRemoteImage(url: url, into: attrString)
+        for info in images {
+            loadRemoteImage(url: info.url, into: attrString)
         }
     }
 
@@ -275,6 +303,7 @@ enum MacHTMLConverter {
                 let fullRange = NSRange(location: 0, length: attrString.length)
                 attrString.enumerateAttribute(vzImageURLKey, in: fullRange, options: []) { value, range, stop in
                     guard let stored = value as? String, stored == urlString else { return }
+                    let existingMermaid = attrString.attribute(vzDiagramMermaidKey, at: range.location, effectiveRange: nil) as? String
                     let attachment = NSTextAttachment()
                     let maxWidth: CGFloat = 600
                     let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
@@ -282,7 +311,11 @@ enum MacHTMLConverter {
                     attachment.image = image
                     attachment.bounds = CGRect(origin: .zero, size: size)
                     let replacement = NSMutableAttributedString(attachment: attachment)
-                    replacement.addAttribute(vzImageURLKey, value: urlString, range: NSRange(location: 0, length: replacement.length))
+                    let repRange = NSRange(location: 0, length: replacement.length)
+                    replacement.addAttribute(vzImageURLKey, value: urlString, range: repRange)
+                    if let mermaid = existingMermaid {
+                        replacement.addAttribute(vzDiagramMermaidKey, value: mermaid, range: repRange)
+                    }
                     attrString.replaceCharacters(in: range, with: replacement)
                     stop.pointee = true
                 }

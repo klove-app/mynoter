@@ -34,6 +34,11 @@ struct NoteEditorView: View {
     @State private var showDiagramInput = false
     @State private var diagramDescription = ""
     @State private var isGeneratingDiagram = false
+    @State private var showDiagramEditor = false
+    @State private var editingDiagramURL = ""
+    @State private var editingDiagramMermaid = ""
+    @State private var editingDiagramPosition = 0
+    @State private var editingDiagramDescription = ""
 
     var bookContext: BookContext?
     private var isBookChapter: Bool { bookContext != nil }
@@ -73,8 +78,15 @@ struct NoteEditorView: View {
                 selectedRange: $selectedRange,
                 onTextChange: { scheduleAutoSave() },
                 onSlashTriggered: { showSlashMenu = true },
-                onDiagramFromSelection: { text, type in
-                    generateDiagramFromSelection(text: text, type: type)
+                onDiagramFromSelection: { text, type, position in
+                    generateDiagramFromSelection(text: text, type: type, insertPosition: position)
+                },
+                onDiagramClicked: { url, mermaid, position in
+                    editingDiagramURL = url
+                    editingDiagramMermaid = mermaid
+                    editingDiagramPosition = position
+                    editingDiagramDescription = ""
+                    showDiagramEditor = true
                 }
             )
 
@@ -336,6 +348,10 @@ struct NoteEditorView: View {
         .sheet(isPresented: $showDiagramInput) {
             diagramInputSheet
                 .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showDiagramEditor) {
+            diagramEditorSheet
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .alert("Удалить заметку?", isPresented: $showDeleteConfirm) {
@@ -693,17 +709,216 @@ struct NoteEditorView: View {
         }
     }
 
-    private func generateDiagramFromSelection(text: String, type: String) {
+    private func generateDiagramFromSelection(text: String, type: String, insertPosition: Int) {
         isGeneratingDiagram = true
         Task {
             defer { isGeneratingDiagram = false }
             do {
                 let result = try await APIService.shared.generateDiagram(description: text, type: type)
-                insertDiagramImage(url: result.url)
+                insertDiagramAtPosition(url: result.url, mermaidCode: result.mermaidCode, position: insertPosition)
             } catch {
                 print("Diagram from selection error: \(error)")
             }
         }
+    }
+
+    private func insertDiagramAtPosition(url: String, mermaidCode: String, position: Int) {
+        guard let tv = findTextView() else { return }
+        let storage = tv.textStorage
+
+        let safePos = min(position, storage.length)
+
+        let placeholder = NSTextAttachment()
+        placeholder.image = UIImage(systemName: "arrow.triangle.branch")
+
+        let mutable = NSMutableAttributedString(string: "\n")
+        let imgStr = NSMutableAttributedString(attachment: placeholder)
+        let imgRange = NSRange(location: 0, length: imgStr.length)
+        imgStr.addAttribute(vzImageURLKey, value: url, range: imgRange)
+        imgStr.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: imgRange)
+        mutable.append(imgStr)
+        mutable.append(NSAttributedString(string: "\n"))
+
+        storage.insert(mutable, at: safePos)
+
+        Task { @MainActor in
+            guard let imageURL = URL(string: url) else { return }
+            do {
+                let (data, _) = try await URLSession.shared.data(from: imageURL)
+                guard let image = UIImage(data: data) else { return }
+
+                let maxWidth: CGFloat = UIScreen.main.bounds.width - 48
+                let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
+                let size = CGSize(
+                    width: image.size.width * scale,
+                    height: image.size.height * scale
+                )
+
+                let newAttachment = NSTextAttachment()
+                newAttachment.image = image
+                newAttachment.bounds = CGRect(origin: .zero, size: size)
+
+                let attachRange = NSRange(location: safePos + 1, length: 1)
+                guard attachRange.location + attachRange.length <= storage.length else { return }
+
+                let replacement = NSMutableAttributedString(attachment: newAttachment)
+                let repRange = NSRange(location: 0, length: replacement.length)
+                replacement.addAttribute(vzImageURLKey, value: url, range: repRange)
+                replacement.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: repRange)
+                storage.replaceCharacters(in: attachRange, with: replacement)
+
+                let html = HTMLConverter.html(from: tv.attributedText)
+                htmlContent = html
+                scheduleAutoSave()
+            } catch {
+                print("Failed to load diagram image: \(error)")
+            }
+        }
+
+        scheduleAutoSave()
+    }
+
+    private var diagramEditorSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    AsyncImage(url: URL(string: editingDiagramURL)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity)
+                                .cornerRadius(10)
+                        case .failure:
+                            VStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                                Text("Не удалось загрузить")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                        default:
+                            ProgressView()
+                                .frame(maxWidth: .infinity, minHeight: 200)
+                        }
+                    }
+
+                    DisclosureGroup("Mermaid-код") {
+                        ScrollView(.horizontal) {
+                            Text(editingDiagramMermaid)
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                                .padding(8)
+                        }
+                        .frame(maxHeight: 120)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(.secondarySystemBackground)))
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Опишите изменения:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        TextEditor(text: $editingDiagramDescription)
+                            .font(.body)
+                            .frame(height: 80)
+                            .scrollContentBackground(.hidden)
+                            .padding(10)
+                            .background(RoundedRectangle(cornerRadius: 10).stroke(Color(.separator)))
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Редактировать диаграмму")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") {
+                        showDiagramEditor = false
+                    }
+                }
+                ToolbarItem(placement: .destructiveAction) {
+                    Button(role: .destructive) {
+                        deleteDiagramiOS()
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        regenerateDiagramiOS()
+                    } label: {
+                        if isGeneratingDiagram {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Text("Перегенерировать")
+                        }
+                    }
+                    .disabled(editingDiagramDescription.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingDiagram)
+                }
+            }
+        }
+    }
+
+    private func regenerateDiagramiOS() {
+        let desc = editingDiagramDescription.trimmingCharacters(in: .whitespaces)
+        let prompt = desc.isEmpty ? editingDiagramMermaid : "\(editingDiagramMermaid)\n\nИзменения: \(desc)"
+        isGeneratingDiagram = true
+        let position = editingDiagramPosition
+
+        Task {
+            defer { isGeneratingDiagram = false }
+            do {
+                let result = try await APIService.shared.generateDiagram(description: prompt, type: "auto")
+                editingDiagramURL = result.url
+                editingDiagramMermaid = result.mermaidCode
+                editingDiagramDescription = ""
+
+                guard let tv = findTextView() else { return }
+                let storage = tv.textStorage
+                let range = NSRange(location: position, length: 1)
+                guard range.location + range.length <= storage.length else { return }
+
+                let (data, _) = try await URLSession.shared.data(from: URL(string: result.url)!)
+                guard let image = UIImage(data: data) else { return }
+
+                let maxWidth: CGFloat = UIScreen.main.bounds.width - 48
+                let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
+                let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+
+                let attachment = NSTextAttachment()
+                attachment.image = image
+                attachment.bounds = CGRect(origin: .zero, size: size)
+
+                let replacement = NSMutableAttributedString(attachment: attachment)
+                let repRange = NSRange(location: 0, length: replacement.length)
+                replacement.addAttribute(vzImageURLKey, value: result.url, range: repRange)
+                replacement.addAttribute(vzDiagramMermaidKey, value: result.mermaidCode, range: repRange)
+                storage.replaceCharacters(in: range, with: replacement)
+
+                htmlContent = HTMLConverter.html(from: tv.attributedText)
+                scheduleAutoSave()
+            } catch {
+                print("Diagram regeneration error: \(error)")
+            }
+        }
+    }
+
+    private func deleteDiagramiOS() {
+        showDiagramEditor = false
+        guard let tv = findTextView() else { return }
+        let storage = tv.textStorage
+        let start = max(0, editingDiagramPosition - 1)
+        let length = min(3, storage.length - start)
+        guard length > 0 else { return }
+        storage.deleteCharacters(in: NSRange(location: start, length: length))
+        htmlContent = HTMLConverter.html(from: tv.attributedText)
+        scheduleAutoSave()
     }
 
     private func insertDiagramImage(url: String) {

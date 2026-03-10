@@ -6,7 +6,8 @@ struct RichTextEditor: UIViewRepresentable {
     @Binding var selectedRange: NSRange
     var onTextChange: (() -> Void)?
     var onSlashTriggered: (() -> Void)?
-    var onDiagramFromSelection: ((String, String) -> Void)?
+    var onDiagramFromSelection: ((String, String, Int) -> Void)?
+    var onDiagramClicked: ((String, String, Int) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -27,6 +28,10 @@ struct RichTextEditor: UIViewRepresentable {
         textView.smartDashesType = .yes
         textView.keyboardDismissMode = .interactiveWithAccessory
         textView.alwaysBounceVertical = true
+
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDiagramDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        textView.addGestureRecognizer(doubleTap)
 
         context.coordinator.textView = textView
         context.coordinator.loadHTML(htmlContent, into: textView)
@@ -53,6 +58,20 @@ struct RichTextEditor: UIViewRepresentable {
             self.parent = parent
         }
 
+        @objc func handleDiagramDoubleTap(_ gesture: UITapGestureRecognizer) {
+            guard let tv = textView else { return }
+            let point = gesture.location(in: tv)
+            guard let position = tv.closestPosition(to: point) else { return }
+            let offset = tv.offset(from: tv.beginningOfDocument, to: position)
+            guard offset < tv.textStorage.length else { return }
+
+            let attrs = tv.textStorage.attributes(at: offset, effectiveRange: nil)
+            guard let mermaid = attrs[vzDiagramMermaidKey] as? String,
+                  let imageURL = attrs[vzImageURLKey] as? String else { return }
+
+            parent.onDiagramClicked?(imageURL, mermaid, offset)
+        }
+
         func loadHTML(_ html: String, into textView: UITextView) {
             lastSetHTML = html
             guard !html.isEmpty else { return }
@@ -64,6 +83,29 @@ struct RichTextEditor: UIViewRepresentable {
         }
 
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+            if range.length == 1, range.location < textView.textStorage.length {
+                let attrs = textView.textStorage.attributes(at: range.location, effectiveRange: nil)
+                if let mermaid = attrs[vzDiagramMermaidKey] as? String,
+                   let imageURL = attrs[vzImageURLKey] as? String {
+                    let editAction = UIAction(
+                        title: "Редактировать диаграмму",
+                        image: UIImage(systemName: "pencil.and.outline")
+                    ) { [weak self] _ in
+                        self?.parent.onDiagramClicked?(imageURL, mermaid, range.location)
+                    }
+                    let deleteAction = UIAction(
+                        title: "Удалить диаграмму",
+                        image: UIImage(systemName: "trash"),
+                        attributes: .destructive
+                    ) { _ in
+                        let start = max(0, range.location - 1)
+                        let length = min(range.length + 2, textView.textStorage.length - start)
+                        textView.textStorage.deleteCharacters(in: NSRange(location: start, length: length))
+                    }
+                    return UIMenu(children: suggestedActions + [editAction, deleteAction])
+                }
+            }
+
             guard range.length > 0,
                   let text = (textView.text as NSString?)?.substring(with: range)
                     .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -81,9 +123,10 @@ struct RichTextEditor: UIViewRepresentable {
                 ("gantt", "Таймлайн", "calendar.badge.clock"),
             ]
 
+            let insertPos = range.location + range.length
             let diagramActions = diagramTypes.map { dtype in
                 UIAction(title: dtype.title, image: UIImage(systemName: dtype.icon)) { [weak self] _ in
-                    self?.parent.onDiagramFromSelection?(text, dtype.id)
+                    self?.parent.onDiagramFromSelection?(text, dtype.id, insertPos)
                 }
             }
 
@@ -244,6 +287,7 @@ enum TextFormatAction: Equatable {
     case insertTable
     case insertDrawing
     case insertDiagram
+    case insertDiagramResult(url: String, mermaidCode: String)
 }
 
 extension UITextView {
@@ -329,6 +373,9 @@ extension UITextView {
             }
 
         case .insertImage, .insertTable, .insertDrawing, .insertDiagram:
+            return
+
+        case .insertDiagramResult:
             return
 
         case .cleanPaste:

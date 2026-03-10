@@ -26,6 +26,11 @@ struct MacNoteEditorView: View {
     @State private var showDiagramInput = false
     @State private var diagramDescription = ""
     @State private var isGeneratingDiagram = false
+    @State private var showDiagramEditor = false
+    @State private var editingDiagramURL = ""
+    @State private var editingDiagramMermaid = ""
+    @State private var editingDiagramRange = NSRange(location: 0, length: 0)
+    @State private var editingDiagramDescription = ""
 
     var bookContext: MacBookContext?
     private var isBookChapter: Bool { bookContext != nil }
@@ -97,6 +102,13 @@ struct MacNoteEditorView: View {
                         },
                         onDiagramFromSelection: { text, type in
                             generateDiagramFromSelection(text: text, type: type)
+                        },
+                        onDiagramClicked: { url, mermaid, range in
+                            editingDiagramURL = url
+                            editingDiagramMermaid = mermaid
+                            editingDiagramRange = range
+                            editingDiagramDescription = ""
+                            showDiagramEditor = true
                         }
                     )
                 }
@@ -193,6 +205,9 @@ struct MacNoteEditorView: View {
         }
         .sheet(isPresented: $showDiagramInput) {
             diagramInputSheet
+        }
+        .sheet(isPresented: $showDiagramEditor) {
+            diagramEditorSheet
         }
         .sheet(isPresented: $showTableEditor) {
             MacTableEditorView(
@@ -539,6 +554,147 @@ struct MacNoteEditorView: View {
         .frame(width: 500)
     }
 
+    private var diagramEditorSheet: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "pencil.and.outline")
+                    .foregroundStyle(.purple)
+                Text("Редактировать диаграмму")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    showDiagramEditor = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.title2)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 12)
+
+            Divider()
+
+            ScrollView {
+                AsyncImage(url: URL(string: editingDiagramURL)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .cornerRadius(8)
+                    case .failure:
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("Не удалось загрузить")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                    default:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 200)
+                    }
+                }
+                .padding(20)
+            }
+            .frame(maxHeight: 400)
+
+            Divider()
+
+            VStack(spacing: 12) {
+                DisclosureGroup("Mermaid-код") {
+                    ScrollView {
+                        Text(editingDiagramMermaid)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    }
+                    .frame(maxHeight: 120)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                Text("Опишите изменения для перегенерации:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextEditor(text: $editingDiagramDescription)
+                    .font(.body)
+                    .frame(height: 80)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
+
+                HStack(spacing: 12) {
+                    Spacer()
+
+                    Button("Удалить") {
+                        deleteDiagram()
+                    }
+                    .foregroundStyle(.red)
+
+                    Button {
+                        regenerateDiagram()
+                    } label: {
+                        if isGeneratingDiagram {
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(width: 100)
+                        } else {
+                            Text("Перегенерировать")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(editingDiagramDescription.trimmingCharacters(in: .whitespaces).isEmpty && !isGeneratingDiagram)
+                }
+            }
+            .padding(20)
+        }
+        .frame(width: 650)
+        .frame(minHeight: 500)
+    }
+
+    private func regenerateDiagram() {
+        let desc = editingDiagramDescription.trimmingCharacters(in: .whitespaces)
+        let prompt = desc.isEmpty ? editingDiagramMermaid : "\(editingDiagramMermaid)\n\nИзменения: \(desc)"
+        isGeneratingDiagram = true
+        let oldRange = editingDiagramRange
+
+        Task {
+            defer { isGeneratingDiagram = false }
+            do {
+                let result = try await APIService.shared.generateDiagram(description: prompt, type: "auto")
+                editingDiagramURL = result.url
+                editingDiagramMermaid = result.mermaidCode
+                editingDiagramDescription = ""
+
+                replaceDiagramInEditor(at: oldRange, newURL: result.url, mermaidCode: result.mermaidCode)
+                scheduleAutoSave()
+            } catch {
+                print("Diagram regeneration error: \(error)")
+            }
+        }
+    }
+
+    private func deleteDiagram() {
+        showDiagramEditor = false
+        triggerFormat(.deleteDiagramAt(editingDiagramRange))
+        scheduleAutoSave()
+    }
+
+    private func replaceDiagramInEditor(at range: NSRange, newURL: String, mermaidCode: String) {
+        triggerFormat(.replaceDiagram(range: range, url: newURL, mermaidCode: mermaidCode))
+    }
+
     private func generateDiagram() {
         let desc = diagramDescription.trimmingCharacters(in: .whitespaces)
         guard !desc.isEmpty else { return }
@@ -563,7 +719,8 @@ struct MacNoteEditorView: View {
             defer { isGeneratingDiagram = false }
             do {
                 let result = try await APIService.shared.generateDiagram(description: text, type: type)
-                insertDiagramImage(url: result.url)
+                triggerFormat(.insertDiagramResult(url: result.url, mermaidCode: result.mermaidCode))
+                scheduleAutoSave()
             } catch {
                 print("Diagram from selection error: \(error)")
             }

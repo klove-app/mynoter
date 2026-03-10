@@ -103,6 +103,9 @@ enum MacFormatAction: Equatable {
     case insertImage
     case insertTable
     case insertDiagram
+    case insertDiagramResult(url: String, mermaidCode: String)
+    case replaceDiagram(range: NSRange, url: String, mermaidCode: String)
+    case deleteDiagramAt(NSRange)
     case insertImageData(Data, String)
     case forceReload
 
@@ -115,7 +118,10 @@ enum MacFormatAction: Equatable {
              (.removeHighlight, .removeHighlight), (.footnote, .footnote),
              (.clearFormatting, .clearFormatting), (.cleanPaste, .cleanPaste),
              (.insertImage, .insertImage), (.insertTable, .insertTable),
-             (.insertDiagram, .insertDiagram), (.forceReload, .forceReload):
+             (.insertDiagram, .insertDiagram), (.forceReload, .forceReload),
+             (.insertDiagramResult, .insertDiagramResult),
+             (.replaceDiagram, .replaceDiagram),
+             (.deleteDiagramAt, .deleteDiagramAt):
             return true
         case (.heading(let a), .heading(let b)):
             return a == b
@@ -140,6 +146,7 @@ struct MacRichTextEditor: NSViewRepresentable {
     var onImagePasted: ((Data, String) -> Void)?
     var onTableInsert: (() -> Void)?
     var onDiagramFromSelection: ((String, String) -> Void)?
+    var onDiagramClicked: ((String, String, NSRange) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -184,6 +191,10 @@ struct MacRichTextEditor: NSViewRepresentable {
             height: CGFloat.greatestFiniteMagnitude
         )
 
+        let clickGesture = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDiagramClick(_:)))
+        clickGesture.numberOfClicksRequired = 2
+        textView.addGestureRecognizer(clickGesture)
+
         context.coordinator.textView = textView
         context.coordinator.loadHTML(htmlContent, into: textView)
         return scrollView
@@ -214,6 +225,7 @@ struct MacRichTextEditor: NSViewRepresentable {
         var isProgrammaticUpdate = false
         var lastSetHTML: String = ""
         weak var textView: NSTextView?
+        var pendingDiagramInsertPosition: Int?
 
         var slashActive = false
         var slashStartLocation: Int = 0
@@ -276,6 +288,25 @@ struct MacRichTextEditor: NSViewRepresentable {
         // MARK: - Context Menu with Diagram
 
         func textView(_ view: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu {
+            if let storage = view.textStorage, charIndex < storage.length {
+                let attrs = storage.attributes(at: charIndex, effectiveRange: nil)
+                if let mermaid = attrs[vzDiagramMermaidKey] as? String,
+                   let imageURL = attrs[vzImageURLKey] as? String {
+                    let editItem = NSMenuItem(
+                        title: "Редактировать диаграмму",
+                        action: #selector(editDiagramAction(_:)),
+                        keyEquivalent: ""
+                    )
+                    editItem.target = self
+                    editItem.representedObject = (imageURL, mermaid, NSRange(location: charIndex, length: 1))
+                    editItem.image = NSImage(systemSymbolName: "pencil.and.outline", accessibilityDescription: nil)?
+                        .withSymbolConfiguration(.init(pointSize: 13, weight: .medium))
+                    menu.insertItem(editItem, at: 0)
+                    menu.insertItem(.separator(), at: 1)
+                    return menu
+                }
+            }
+
             let range = view.selectedRange()
             guard range.length > 0,
                   let storage = view.textStorage,
@@ -324,9 +355,143 @@ struct MacRichTextEditor: NSViewRepresentable {
             return menu
         }
 
+        @objc func editDiagramAction(_ sender: NSMenuItem) {
+            guard let (imageURL, mermaidCode, range) = sender.representedObject as? (String, String, NSRange) else { return }
+            parent.onDiagramClicked?(imageURL, mermaidCode, range)
+        }
+
+        @objc func handleDiagramClick(_ gesture: NSClickGestureRecognizer) {
+            guard let tv = textView, let storage = tv.textStorage else { return }
+            let point = gesture.location(in: tv)
+            let charIndex = tv.characterIndexForInsertion(at: point)
+            guard charIndex < storage.length else { return }
+
+            let attrs = storage.attributes(at: charIndex, effectiveRange: nil)
+            guard let mermaidCode = attrs[vzDiagramMermaidKey] as? String,
+                  let imageURL = attrs[vzImageURLKey] as? String else { return }
+
+            let range = NSRange(location: charIndex, length: 1)
+            parent.onDiagramClicked?(imageURL, mermaidCode, range)
+        }
+
         @objc func diagramContextAction(_ sender: NSMenuItem) {
             guard let (text, type) = sender.representedObject as? (String, String) else { return }
+            if let tv = textView {
+                let range = tv.selectedRange()
+                pendingDiagramInsertPosition = range.location + range.length
+            }
             parent.onDiagramFromSelection?(text, type)
+        }
+
+        func replaceDiagramInStorage(at range: NSRange, url: String, mermaidCode: String) {
+            guard let tv = textView, let storage = tv.textStorage else { return }
+            guard range.location + range.length <= storage.length else { return }
+
+            let placeholder = NSTextAttachment()
+            placeholder.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Diagram")?
+                .withSymbolConfiguration(.init(pointSize: 24, weight: .medium))
+
+            let replacement = NSMutableAttributedString(attachment: placeholder)
+            let repRange = NSRange(location: 0, length: replacement.length)
+            replacement.addAttribute(vzImageURLKey, value: url, range: repRange)
+            replacement.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: repRange)
+
+            isProgrammaticUpdate = true
+            storage.replaceCharacters(in: range, with: replacement)
+            isProgrammaticUpdate = false
+
+            Task { @MainActor in
+                guard let imageURL = URL(string: url) else { return }
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: imageURL)
+                    guard let image = NSImage(data: data) else { return }
+
+                    let maxWidth: CGFloat = 600
+                    let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
+                    image.size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+
+                    let newAttachment = NSTextAttachment()
+                    newAttachment.image = image
+                    newAttachment.bounds = CGRect(origin: .zero, size: image.size)
+
+                    let attachRange = NSRange(location: range.location, length: 1)
+                    guard attachRange.location + attachRange.length <= storage.length else { return }
+
+                    self.isProgrammaticUpdate = true
+                    let imgReplacement = NSMutableAttributedString(attachment: newAttachment)
+                    let imgRange = NSRange(location: 0, length: imgReplacement.length)
+                    imgReplacement.addAttribute(vzImageURLKey, value: url, range: imgRange)
+                    imgReplacement.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: imgRange)
+                    storage.replaceCharacters(in: attachRange, with: imgReplacement)
+                    self.isProgrammaticUpdate = false
+
+                    syncHTML(from: tv)
+                    self.parent.onTextChange?()
+                } catch {
+                    print("Failed to load replacement diagram: \(error)")
+                }
+            }
+        }
+
+        func insertDiagramAtPendingPosition(imageURL: String, mermaidCode: String) {
+            guard let tv = textView, let storage = tv.textStorage else { return }
+
+            let insertPos = pendingDiagramInsertPosition ?? storage.length
+            pendingDiagramInsertPosition = nil
+
+            let safePos = min(insertPos, storage.length)
+
+            let placeholder = NSTextAttachment()
+            placeholder.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Diagram")?
+                .withSymbolConfiguration(.init(pointSize: 24, weight: .medium))
+
+            let mutable = NSMutableAttributedString(string: "\n")
+            let imgStr = NSMutableAttributedString(attachment: placeholder)
+            let imgRange = NSRange(location: 0, length: imgStr.length)
+            imgStr.addAttribute(vzImageURLKey, value: imageURL, range: imgRange)
+            imgStr.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: imgRange)
+            mutable.append(imgStr)
+            mutable.append(NSAttributedString(string: "\n"))
+
+            isProgrammaticUpdate = true
+            storage.insert(mutable, at: safePos)
+            isProgrammaticUpdate = false
+
+            Task { @MainActor in
+                guard let url = URL(string: imageURL) else { return }
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    guard let image = NSImage(data: data) else { return }
+
+                    let maxWidth: CGFloat = 600
+                    let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
+                    image.size = NSSize(
+                        width: image.size.width * scale,
+                        height: image.size.height * scale
+                    )
+
+                    let newAttachment = NSTextAttachment()
+                    newAttachment.image = image
+                    newAttachment.bounds = CGRect(origin: .zero, size: image.size)
+
+                    let attachPos = safePos + 1
+                    let attachRange = NSRange(location: attachPos, length: 1)
+                    guard attachRange.location + attachRange.length <= storage.length else { return }
+
+                    self.isProgrammaticUpdate = true
+                    let replacement = NSMutableAttributedString(attachment: newAttachment)
+                    let repRange = NSRange(location: 0, length: replacement.length)
+                    replacement.addAttribute(vzImageURLKey, value: imageURL, range: repRange)
+                    replacement.addAttribute(vzDiagramMermaidKey, value: mermaidCode, range: repRange)
+                    storage.replaceCharacters(in: attachRange, with: replacement)
+                    self.isProgrammaticUpdate = false
+
+                    syncHTML(from: tv)
+                    self.parent.onTextChange?()
+                } catch {
+                    print("Failed to load diagram image: \(error)")
+                }
+            }
         }
 
         func textDidBeginEditing(_ notification: Notification) {
@@ -934,6 +1099,28 @@ struct MacRichTextEditor: NSViewRepresentable {
                 return
 
             case .insertDiagram:
+                return
+
+            case .insertDiagramResult(let url, let mermaidCode):
+                insertDiagramAtPendingPosition(imageURL: url, mermaidCode: mermaidCode)
+                return
+
+            case .replaceDiagram(let range, let url, let mermaidCode):
+                replaceDiagramInStorage(at: range, url: url, mermaidCode: mermaidCode)
+                return
+
+            case .deleteDiagramAt(let range):
+                guard let tv = textView, let storage = tv.textStorage else { return }
+                let delRange = NSRange(
+                    location: max(0, range.location - 1),
+                    length: min(range.length + 2, storage.length - max(0, range.location - 1))
+                )
+                guard delRange.location + delRange.length <= storage.length else { return }
+                isProgrammaticUpdate = true
+                storage.deleteCharacters(in: delRange)
+                isProgrammaticUpdate = false
+                syncHTML(from: tv)
+                parent.onTextChange?()
                 return
 
             case .insertImageData(let data, let mimeType):

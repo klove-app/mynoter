@@ -29,16 +29,25 @@ const DIAGRAM_TYPES = {
   pie: "Use pie. Good for distributions, proportions.",
 };
 
-const MERMAID_PROMPT = `You are a diagram generator. Convert the user's description into a Mermaid diagram.
+const MERMAID_PROMPT = `You are a precise diagram generator. Convert the user's description into a Mermaid diagram.
 
-Rules:
+Critical rules:
 - Output ONLY valid Mermaid code, no markdown fences, no explanation
 - Use Russian text in node labels when the input is in Russian
 - Keep it clean and readable — avoid overly complex layouts
 - Use descriptive node IDs (A, B, C... or meaningful short names)
+
+IMPORTANT — faithfulness to source text:
+- NEVER invent relationships, arrows, or connections that are NOT explicitly described in the source text
+- If the input is a plain list of items WITHOUT explicit relationships between them, use mindmap with items as branches from a central topic, or a simple graph with nodes but NO arrows
+- Only draw arrows/connections when the text explicitly describes a flow, dependency, sequence, or relationship (e.g. "A leads to B", "after X comes Y", "X depends on Y")
+- When in doubt, prefer a simpler diagram (mindmap, pie, or unconnected nodes) over a complex flowchart with invented connections
+- For lists: mindmap is almost always the right choice unless the user explicitly chose a different type
+
+Styling:
 - Add styling where appropriate (colors, shapes)
 - For flowcharts: use rounded boxes for start/end, diamonds for decisions, rectangles for processes
-- The user may provide raw text/notes — analyze them and extract the structure for the diagram`;
+- The user may provide raw text/notes — analyze them and extract ONLY the structure that is actually present in the text`;
 
 diagramsRouter.post("/generate", async (req, res) => {
   const { description, type } = req.body;
