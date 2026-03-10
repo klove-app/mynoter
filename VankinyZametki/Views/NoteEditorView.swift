@@ -72,7 +72,10 @@ struct NoteEditorView: View {
                 htmlContent: $htmlContent,
                 selectedRange: $selectedRange,
                 onTextChange: { scheduleAutoSave() },
-                onSlashTriggered: { showSlashMenu = true }
+                onSlashTriggered: { showSlashMenu = true },
+                onDiagramFromSelection: { text, type in
+                    generateDiagramFromSelection(text: text, type: type)
+                }
             )
 
             bottomBar
@@ -683,19 +686,35 @@ struct NoteEditorView: View {
                 let result = try await APIService.shared.generateDiagram(description: desc)
                 showDiagramInput = false
                 diagramDescription = ""
-
-                findTextView()?.resignFirstResponder()
-                let imgTag = "<img src=\"\(result.url)\" style=\"max-width:100%;height:auto;\">"
-                if htmlContent.isEmpty {
-                    htmlContent = imgTag
-                } else {
-                    htmlContent += "<br>" + imgTag
-                }
-                scheduleAutoSave()
+                insertDiagramImage(url: result.url)
             } catch {
                 print("Diagram generation error: \(error)")
             }
         }
+    }
+
+    private func generateDiagramFromSelection(text: String, type: String) {
+        isGeneratingDiagram = true
+        Task {
+            defer { isGeneratingDiagram = false }
+            do {
+                let result = try await APIService.shared.generateDiagram(description: text, type: type)
+                insertDiagramImage(url: result.url)
+            } catch {
+                print("Diagram from selection error: \(error)")
+            }
+        }
+    }
+
+    private func insertDiagramImage(url: String) {
+        findTextView()?.resignFirstResponder()
+        let imgTag = "<img src=\"\(url)\" style=\"max-width:100%;height:auto;\">"
+        if htmlContent.isEmpty {
+            htmlContent = imgTag
+        } else {
+            htmlContent += "<br>" + imgTag
+        }
+        scheduleAutoSave()
     }
 
     // MARK: - Format Actions

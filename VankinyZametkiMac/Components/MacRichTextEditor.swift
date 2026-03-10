@@ -139,6 +139,7 @@ struct MacRichTextEditor: NSViewRepresentable {
     var onSlashCommand: ((SlashCommandItem.SlashAction) -> Void)?
     var onImagePasted: ((Data, String) -> Void)?
     var onTableInsert: (() -> Void)?
+    var onDiagramFromSelection: ((String, String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -270,6 +271,62 @@ struct MacRichTextEditor: NSViewRepresentable {
 
         private func handleImagePaste(_ data: Data, mimeType: String, in tv: NSTextView) {
             parent.onImagePasted?(data, mimeType)
+        }
+
+        // MARK: - Context Menu with Diagram
+
+        func textView(_ view: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu {
+            let range = view.selectedRange()
+            guard range.length > 0,
+                  let storage = view.textStorage,
+                  range.location + range.length <= storage.length else {
+                return menu
+            }
+
+            let selectedText = (storage.string as NSString).substring(with: range)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !selectedText.isEmpty else { return menu }
+
+            let diagramTypes: [(id: String, title: String, icon: String)] = [
+                ("auto", "Авто (определить тип)", "sparkles"),
+                ("flowchart", "Блок-схема / Процесс", "arrow.triangle.branch"),
+                ("sequence", "Диаграмма взаимодействия", "person.2.wave.2"),
+                ("mindmap", "Карта идей", "brain.head.profile"),
+                ("er", "Схема базы данных", "cylinder"),
+                ("state", "Диаграмма состояний", "circle.hexagongrid"),
+                ("class", "Структура данных", "square.stack.3d.up"),
+                ("gantt", "Таймлайн", "calendar.badge.clock"),
+                ("pie", "Распределение", "chart.pie"),
+            ]
+
+            let diagramMenu = NSMenu()
+            for dtype in diagramTypes {
+                let item = NSMenuItem(
+                    title: dtype.title,
+                    action: #selector(diagramContextAction(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = (selectedText, dtype.id)
+                item.image = NSImage(systemSymbolName: dtype.icon, accessibilityDescription: dtype.title)?
+                    .withSymbolConfiguration(.init(pointSize: 13, weight: .medium))
+                diagramMenu.addItem(item)
+            }
+
+            let parentItem = NSMenuItem(title: "Создать диаграмму", action: nil, keyEquivalent: "")
+            parentItem.image = NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Диаграмма")?
+                .withSymbolConfiguration(.init(pointSize: 13, weight: .medium))
+            parentItem.submenu = diagramMenu
+
+            menu.insertItem(.separator(), at: 0)
+            menu.insertItem(parentItem, at: 0)
+
+            return menu
+        }
+
+        @objc func diagramContextAction(_ sender: NSMenuItem) {
+            guard let (text, type) = sender.representedObject as? (String, String) else { return }
+            parent.onDiagramFromSelection?(text, type)
         }
 
         func textDidBeginEditing(_ notification: Notification) {
@@ -1120,3 +1177,4 @@ struct MacRichTextEditor: NSViewRepresentable {
         }
     }
 }
+

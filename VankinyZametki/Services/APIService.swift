@@ -247,8 +247,8 @@ final class APIService: @unchecked Sendable {
         let filename: String
     }
 
-    func generateDiagram(description: String) async throws -> DiagramResult {
-        let body: [String: Any?] = ["description": description]
+    func generateDiagram(description: String, type: String = "auto") async throws -> DiagramResult {
+        let body: [String: Any?] = ["description": description, "type": type]
         return try await post("/api/diagrams/generate", body: body)
     }
 

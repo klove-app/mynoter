@@ -94,6 +94,9 @@ struct MacNoteEditorView: View {
                         onTableInsert: {
                             editingTableData = TableData.empty(rows: 3, columns: 3)
                             showTableEditor = true
+                        },
+                        onDiagramFromSelection: { text, type in
+                            generateDiagramFromSelection(text: text, type: type)
                         }
                     )
                 }
@@ -547,20 +550,36 @@ struct MacNoteEditorView: View {
                 let result = try await APIService.shared.generateDiagram(description: desc)
                 showDiagramInput = false
                 diagramDescription = ""
-
-                let imgTag = "<img src=\"\(result.url)\" style=\"max-width:100%;height:auto;border-radius:6px;\">"
-                if htmlContent.isEmpty {
-                    htmlContent = imgTag
-                } else {
-                    htmlContent += "<br>" + imgTag
-                }
-                scheduleAutoSave()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    triggerFormat(.forceReload)
-                }
+                insertDiagramImage(url: result.url)
             } catch {
                 print("Diagram generation error: \(error)")
             }
+        }
+    }
+
+    private func generateDiagramFromSelection(text: String, type: String) {
+        isGeneratingDiagram = true
+        Task {
+            defer { isGeneratingDiagram = false }
+            do {
+                let result = try await APIService.shared.generateDiagram(description: text, type: type)
+                insertDiagramImage(url: result.url)
+            } catch {
+                print("Diagram from selection error: \(error)")
+            }
+        }
+    }
+
+    private func insertDiagramImage(url: String) {
+        let imgTag = "<img src=\"\(url)\" style=\"max-width:100%;height:auto;border-radius:6px;\">"
+        if htmlContent.isEmpty {
+            htmlContent = imgTag
+        } else {
+            htmlContent += "<br>" + imgTag
+        }
+        scheduleAutoSave()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            triggerFormat(.forceReload)
         }
     }
 

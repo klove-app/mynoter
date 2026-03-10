@@ -6,6 +6,7 @@ struct RichTextEditor: UIViewRepresentable {
     @Binding var selectedRange: NSRange
     var onTextChange: (() -> Void)?
     var onSlashTriggered: (() -> Void)?
+    var onDiagramFromSelection: ((String, String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -60,6 +61,39 @@ struct RichTextEditor: UIViewRepresentable {
                 textView.attributedText = HTMLConverter.attributedString(from: html)
                 self.isProgrammaticUpdate = false
             }
+        }
+
+        func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+            guard range.length > 0,
+                  let text = (textView.text as NSString?)?.substring(with: range)
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !text.isEmpty else {
+                return UIMenu(children: suggestedActions)
+            }
+
+            let diagramTypes: [(id: String, title: String, icon: String)] = [
+                ("auto", "Авто", "sparkles"),
+                ("flowchart", "Блок-схема", "arrow.triangle.branch"),
+                ("sequence", "Взаимодействие", "person.2.wave.2"),
+                ("mindmap", "Карта идей", "brain.head.profile"),
+                ("er", "Схема БД", "cylinder"),
+                ("state", "Состояния", "circle.hexagongrid"),
+                ("gantt", "Таймлайн", "calendar.badge.clock"),
+            ]
+
+            let diagramActions = diagramTypes.map { dtype in
+                UIAction(title: dtype.title, image: UIImage(systemName: dtype.icon)) { [weak self] _ in
+                    self?.parent.onDiagramFromSelection?(text, dtype.id)
+                }
+            }
+
+            let diagramMenu = UIMenu(
+                title: "Создать диаграмму",
+                image: UIImage(systemName: "arrow.triangle.branch"),
+                children: diagramActions
+            )
+
+            return UIMenu(children: suggestedActions + [diagramMenu])
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
