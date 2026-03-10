@@ -1,13 +1,16 @@
 import SwiftUI
+import PhotosUI
 
 struct NoteEditorView: View {
     @EnvironmentObject private var noteStore: NoteStore
     @EnvironmentObject private var folderStore: FolderStore
+    @EnvironmentObject private var tagStore: TagStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var note: Note
     @State private var title: String
     @State private var htmlContent: String
+    @State private var noteTags: [Tag]
     @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
     @State private var isNewNote: Bool
     @State private var isSaving = false
@@ -17,18 +20,47 @@ struct NoteEditorView: View {
     @State private var showDeleteConfirm = false
     @State private var showVoiceAppend = false
     @State private var pendingVoiceHTML: String?
+    @State private var showCreateTag = false
+    @State private var newTagName = ""
+    @State private var newTagColor: TagColor = .blue
+    @State private var showSlashMenu = false
+    @State private var showImagePicker = false
+    @State private var showTableEditor = false
+    @State private var editingTableData: TableData?
+    @State private var isUploadingImage = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showDrawingCanvas = false
+    @State private var isNormalizing = false
+    @State private var showDiagramInput = false
+    @State private var diagramDescription = ""
+    @State private var isGeneratingDiagram = false
 
-    init(note: Note) {
+    var bookContext: BookContext?
+    private var isBookChapter: Bool { bookContext != nil }
+
+    @State private var synopsis: String
+    @State private var chapterStatus: ChapterStatus
+
+    init(note: Note, bookContext: BookContext? = nil) {
         _note = State(initialValue: note)
         _title = State(initialValue: note.title)
         _htmlContent = State(initialValue: note.content)
+        _noteTags = State(initialValue: note.tags)
         _isNewNote = State(initialValue: note.createdAt == note.updatedAt && note.content.isEmpty && note.title.isEmpty)
+        _synopsis = State(initialValue: note.synopsis)
+        _chapterStatus = State(initialValue: note.status)
+        self.bookContext = bookContext
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            folderBar
+            breadcrumbBar
+
             titleField
+
+            if isBookChapter {
+                synopsisField
+            }
 
             if note.isVoiceNote, let audioUrl = note.audioUrl {
                 AudioPlayerView(urlString: audioUrl)
@@ -36,18 +68,32 @@ struct NoteEditorView: View {
                     .padding(.bottom, 8)
             }
 
-            Divider()
-                .padding(.horizontal, 16)
-
             RichTextEditor(
                 htmlContent: $htmlContent,
                 selectedRange: $selectedRange,
-                onTextChange: { scheduleAutoSave() }
+                onTextChange: { scheduleAutoSave() },
+                onSlashTriggered: { showSlashMenu = true }
             )
+
+            bottomBar
         }
         .safeAreaInset(edge: .bottom) {
-            FormattingToolbar { action in
-                findTextView()?.applyFormat(action)
+            ZStack(alignment: .top) {
+                FormattingToolbar { action in
+                    handleFormatAction(action)
+                }
+                if isUploadingImage {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("Загрузка…")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .offset(y: -8)
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -80,6 +126,10 @@ struct NoteEditorView: View {
                     } else if isSaving {
                         ProgressView()
                             .controlSize(.mini)
+                    } else if isBookChapter, let ctx = bookContext {
+                        Text("Глава \(ctx.currentIndex + 1) из \(ctx.chapters.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .animation(.easeInOut(duration: 0.25), value: showSaved)
@@ -87,14 +137,49 @@ struct NoteEditorView: View {
             }
 
             ToolbarItemGroup(placement: .primaryAction) {
+                if isBookChapter, let ctx = bookContext {
+                    HStack(spacing: 4) {
+                        Button {
+                            navigateToChapter(ctx.currentIndex - 1)
+                        } label: {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .disabled(ctx.currentIndex <= 0)
+
+                        Button {
+                            navigateToChapter(ctx.currentIndex + 1)
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .disabled(ctx.currentIndex >= ctx.chapters.count - 1)
+                    }
+                }
+
                 Button { showVoiceAppend = true } label: {
                     Image(systemName: "mic.badge.plus")
                         .font(.system(size: 15))
                 }
 
-                ShareLink(item: shareText) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 15))
+                Button {
+                    normalizeFormatting()
+                } label: {
+                    if isNormalizing {
+                        ProgressView()
+                            .controlSize(.mini)
+                    } else {
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 15))
+                    }
+                }
+                .disabled(isNormalizing || htmlContent.isEmpty)
+
+                if !isBookChapter {
+                    ShareLink(item: shareText) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
+                    }
                 }
 
                 moreMenu
@@ -123,6 +208,133 @@ struct NoteEditorView: View {
             }
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showCreateTag) {
+            NavigationStack {
+                Form {
+                    Section("Название") {
+                        TextField("Имя тега", text: $newTagName)
+                    }
+                    Section("Цвет") {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                            ForEach(TagColor.allCases, id: \.self) { color in
+                                Button {
+                                    newTagColor = color
+                                } label: {
+                                    ZStack {
+                                        Circle()
+                                            .fill(color.swiftUIColor)
+                                            .frame(width: 36, height: 36)
+                                        if newTagColor == color {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundStyle(.white)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                .navigationTitle("Новый тег")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Отмена") { showCreateTag = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Создать") {
+                            guard !newTagName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                            showCreateTag = false
+                            Task {
+                                if isNewNote {
+                                    saveTask?.cancel()
+                                    isSaving = false
+                                    await saveNote()
+                                }
+                                guard let newTag = await tagStore.createTag(
+                                    name: newTagName.trimmingCharacters(in: .whitespaces),
+                                    color: newTagColor.rawValue
+                                ) else { return }
+
+                                noteTags.append(newTag)
+                                let updated = await tagStore.addTag(newTag.id, toNote: note.id)
+                                if !updated.isEmpty {
+                                    noteTags = updated
+                                }
+                                if let idx = noteStore.notes.firstIndex(where: { $0.id == note.id }) {
+                                    noteStore.notes[idx].tags = noteTags
+                                }
+                            }
+                        }
+                        .disabled(newTagName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showSlashMenu) {
+            iOSSlashCommandSheet { action in
+                showSlashMenu = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    handleFormatAction(action)
+                }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .photosPicker(isPresented: $showImagePicker, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let item = newItem else { return }
+            selectedPhotoItem = nil
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+                await uploadAndInsertImage(data: data, mimeType: "image/jpeg")
+            }
+        }
+        .sheet(isPresented: $showTableEditor) {
+            if let data = editingTableData {
+                NavigationStack {
+                    iOSTableEditorView(
+                        tableData: data,
+                        onSave: { savedTable in
+                            showTableEditor = false
+                            let tableHTML = savedTable.toHTML()
+                            if htmlContent.isEmpty {
+                                htmlContent = tableHTML
+                            } else {
+                                htmlContent += tableHTML
+                            }
+                            scheduleAutoSave()
+                        },
+                        onCancel: { showTableEditor = false }
+                    )
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(isPresented: $showDrawingCanvas) {
+            NavigationStack {
+                iOSDrawingView(
+                    onSave: { pngData in
+                        showDrawingCanvas = false
+                        Task {
+                            await uploadAndInsertImage(data: pngData, mimeType: "image/png")
+                        }
+                    },
+                    onCancel: { showDrawingCanvas = false }
+                )
+            }
+            .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showDiagramInput) {
+            diagramInputSheet
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
         .alert("Удалить заметку?", isPresented: $showDeleteConfirm) {
             Button("Удалить", role: .destructive) {
                 Task {
@@ -139,28 +351,196 @@ struct NoteEditorView: View {
                 await folderStore.loadFolders()
             }
         }
-        .onChange(of: note.folderId) { _, _ in
-            scheduleAutoSave()
+        .onChange(of: note.folderId) { _, _ in scheduleAutoSave() }
+        .onChange(of: chapterStatus) { _, _ in scheduleAutoSave() }
+    }
+
+    // MARK: - Tags (compact, for bottom bar)
+
+    private var noteTagsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(noteTags) { tag in
+                    HStack(spacing: 2) {
+                        Circle()
+                            .fill(tag.swiftUIColor)
+                            .frame(width: 5, height: 5)
+                        Text(tag.name)
+                            .font(.system(size: 11))
+                    }
+                    .foregroundStyle(.tertiary)
+                    .onLongPressGesture {
+                        Task {
+                            let updated = await tagStore.removeTag(tag.id, fromNote: note.id)
+                            noteTags = updated
+                            if let idx = noteStore.notes.firstIndex(where: { $0.id == note.id }) {
+                                noteStore.notes[idx].tags = updated
+                            }
+                        }
+                    }
+                }
+
+                Menu {
+                    let available = tagStore.tags.filter { tag in
+                        !noteTags.contains(where: { $0.id == tag.id })
+                    }
+                    if !available.isEmpty {
+                        Section("Добавить тег") {
+                            ForEach(available) { tag in
+                                Button {
+                                    Task {
+                                        if isNewNote {
+                                            saveTask?.cancel()
+                                            isSaving = false
+                                            await saveNote()
+                                        }
+                                        noteTags.append(tag)
+                                        let updated = await tagStore.addTag(tag.id, toNote: note.id)
+                                        if !updated.isEmpty {
+                                            noteTags = updated
+                                        }
+                                        if let idx = noteStore.notes.firstIndex(where: { $0.id == note.id }) {
+                                            noteStore.notes[idx].tags = noteTags
+                                        }
+                                    }
+                                } label: {
+                                    Label(tag.name, systemImage: "tag.fill")
+                                }
+                            }
+                        }
+                    }
+
+                    Section {
+                        Button {
+                            newTagName = ""
+                            newTagColor = .blue
+                            showCreateTag = true
+                        } label: {
+                            Label("Создать тег…", systemImage: "plus.circle")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "tag")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.quaternary)
+                }
+            }
         }
     }
 
-    // MARK: - Folder bar
+    // MARK: - Breadcrumb Bar
 
-    private var folderBar: some View {
-        Button { showFolderPicker = true } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "folder")
-                    .font(.system(size: 11))
-                Text(folderName)
-                    .font(.caption)
-                    .lineLimit(1)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+    private var breadcrumbBar: some View {
+        HStack(spacing: 0) {
+            Button { showFolderPicker = true } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: isBookChapter ? "book.closed.fill" : "folder.fill")
+                        .font(.system(size: 10))
+                    Text(folderName)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+
+                    if !title.isEmpty {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(.quaternary)
+                        Text(title)
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(.tertiary)
             }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            if isBookChapter {
+                Menu {
+                    ForEach(ChapterStatus.allCases, id: \.self) { status in
+                        Button {
+                            chapterStatus = status
+                        } label: {
+                            HStack {
+                                Image(systemName: status.icon)
+                                Text(status.displayName)
+                                if status == chapterStatus {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: chapterStatus.icon)
+                            .font(.system(size: 9))
+                        Text(chapterStatus.displayName)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(statusColor.opacity(0.10), in: Capsule())
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(Color(.separator).opacity(0.08))
+    }
+
+    private var statusColor: Color {
+        switch chapterStatus {
+        case .draft: return .gray
+        case .inProgress: return .blue
+        case .revised: return .orange
+        case .final_: return .green
+        }
+    }
+
+    // MARK: - Synopsis
+
+    private var synopsisField: some View {
+        TextField("Синопсис главы...", text: $synopsis, axis: .vertical)
+            .font(.subheadline)
             .foregroundStyle(.secondary)
+            .lineLimit(1...3)
             .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 6)
+            .onChange(of: synopsis) { _, _ in scheduleAutoSave() }
+    }
+
+    // MARK: - Bottom Bar (tags + status)
+
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            Color(.separator).opacity(0.3).frame(height: 0.5)
+
+            HStack(spacing: 8) {
+                noteTagsBar
+
+                Spacer(minLength: 4)
+
+                let wc = computeWordCount()
+                Text("\(wc) сл.")
+                    .font(.system(size: 11).monospacedDigit())
+
+                Text("·")
+                    .font(.system(size: 11))
+
+                Text(note.formattedDate)
+                    .font(.system(size: 11))
+
+                if isBookChapter, let ctx = bookContext {
+                    Text("·")
+                        .font(.system(size: 11))
+                    Text("Гл. \(ctx.currentIndex + 1)")
+                        .font(.system(size: 11))
+                }
+            }
+            .foregroundStyle(.quaternary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
     }
 
@@ -176,23 +556,23 @@ struct NoteEditorView: View {
 
     private var titleField: some View {
         TextField("Заголовок", text: $title)
-            .font(.title2.bold())
+            .font(.system(size: 24, weight: .bold))
             .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
-            .onChange(of: title) { _, _ in
-                scheduleAutoSave()
-            }
+            .padding(.top, 14)
+            .padding(.bottom, isBookChapter ? 4 : 10)
+            .onChange(of: title) { _, _ in scheduleAutoSave() }
     }
 
     // MARK: - More menu
 
     private var moreMenu: some View {
         Menu {
-            Button {
-                showFolderPicker = true
-            } label: {
-                Label("Переместить в папку", systemImage: "folder")
+            if !isBookChapter {
+                Button {
+                    showFolderPicker = true
+                } label: {
+                    Label("Переместить в папку", systemImage: "folder")
+                }
             }
 
             Button {
@@ -224,6 +604,137 @@ struct NoteEditorView: View {
         return t + body
     }
 
+    // MARK: - AI Normalize
+
+    private func normalizeFormatting() {
+        guard !htmlContent.isEmpty, !isNormalizing else { return }
+        isNormalizing = true
+        findTextView()?.resignFirstResponder()
+        Task {
+            defer { isNormalizing = false }
+            do {
+                let normalized = try await APIService.shared.normalizeContent(html: htmlContent)
+                htmlContent = normalized
+                scheduleAutoSave()
+            } catch {
+                print("Normalize error: \(error)")
+            }
+        }
+    }
+
+    // MARK: - Diagram Generation
+
+    private var diagramInputSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("Опишите что нужно изобразить — процесс, схему, структуру")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextEditor(text: $diagramDescription)
+                    .font(.body)
+                    .frame(minHeight: 100)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).stroke(Color(.separator)))
+
+                Text("Примеры: «процесс оформления заказа», «структура БД», «взаимодействие сервисов»")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Создать диаграмму")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") {
+                        showDiagramInput = false
+                        diagramDescription = ""
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        generateDiagram()
+                    } label: {
+                        if isGeneratingDiagram {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Text("Создать")
+                        }
+                    }
+                    .disabled(diagramDescription.trimmingCharacters(in: .whitespaces).isEmpty || isGeneratingDiagram)
+                }
+            }
+        }
+    }
+
+    private func generateDiagram() {
+        let desc = diagramDescription.trimmingCharacters(in: .whitespaces)
+        guard !desc.isEmpty else { return }
+        isGeneratingDiagram = true
+
+        Task {
+            defer { isGeneratingDiagram = false }
+            do {
+                let result = try await APIService.shared.generateDiagram(description: desc)
+                showDiagramInput = false
+                diagramDescription = ""
+
+                findTextView()?.resignFirstResponder()
+                let imgTag = "<img src=\"\(result.url)\" style=\"max-width:100%;height:auto;\">"
+                if htmlContent.isEmpty {
+                    htmlContent = imgTag
+                } else {
+                    htmlContent += "<br>" + imgTag
+                }
+                scheduleAutoSave()
+            } catch {
+                print("Diagram generation error: \(error)")
+            }
+        }
+    }
+
+    // MARK: - Format Actions
+
+    private func handleFormatAction(_ action: TextFormatAction) {
+        switch action {
+        case .insertImage:
+            showImagePicker = true
+        case .insertTable:
+            editingTableData = TableData.empty(rows: 3, columns: 3)
+            showTableEditor = true
+        case .insertDrawing:
+            showDrawingCanvas = true
+        case .insertDiagram:
+            showDiagramInput = true
+        default:
+            guard let tv = findTextView() else { return }
+            tv.becomeFirstResponder()
+            tv.applyFormat(action)
+        }
+    }
+
+    private func uploadAndInsertImage(data: Data, mimeType: String) async {
+        isUploadingImage = true
+        defer { isUploadingImage = false }
+        do {
+            let result = try await APIService.shared.uploadImage(data: data, mimeType: mimeType)
+            let imgTag = "<img src=\"\(result.url)\" style=\"max-width:100%;height:auto;\">"
+            if htmlContent.isEmpty {
+                htmlContent = imgTag
+            } else {
+                htmlContent += "<br>" + imgTag
+            }
+            scheduleAutoSave()
+        } catch {
+            print("Image upload error: \(error)")
+        }
+    }
+
     // MARK: - Duplicate
 
     private func duplicateNote() async {
@@ -235,6 +746,27 @@ struct NoteEditorView: View {
         if newNote != nil {
             dismiss()
         }
+    }
+
+    // MARK: - Navigation
+
+    private func navigateToChapter(_ index: Int) {
+        guard let ctx = bookContext,
+              index >= 0, index < ctx.chapters.count else { return }
+        saveTask?.cancel()
+        Task {
+            await saveNote()
+            dismiss()
+        }
+    }
+
+    // MARK: - Word Count
+
+    private func computeWordCount() -> Int {
+        htmlContent
+            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+            .count
     }
 
     // MARK: - Auto-save
@@ -258,13 +790,17 @@ struct NoteEditorView: View {
 
         note.title = title
         note.content = htmlContent
+        note.synopsis = synopsis
+        note.status = chapterStatus
+        note.wordCount = computeWordCount()
         note.updatedAt = Date()
 
         if isNewNote {
             if let created = await noteStore.createNote(
                 title: note.title,
                 content: note.content,
-                folderId: note.folderId
+                folderId: note.folderId,
+                sortOrder: note.sortOrder
             ) {
                 note = created
                 isNewNote = false
@@ -316,7 +852,7 @@ struct FolderPickerSheet: View {
                     }
                 }
 
-                ForEach(folderStore.folders) { folder in
+                ForEach(folderStore.regularFolders) { folder in
                     Button {
                         selectedFolderId = folder.id
                         dismiss()

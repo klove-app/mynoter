@@ -1,19 +1,20 @@
-import UIKit
+import AppKit
 
 let vzImageURLKey = NSAttributedString.Key("VZImageURL")
 let vzTableHTMLKey = NSAttributedString.Key("VZTableHTML")
 
-enum HTMLConverter {
+@MainActor
+enum MacHTMLConverter {
     static func attributedString(from html: String) -> NSAttributedString {
         guard !html.isEmpty else { return NSAttributedString() }
 
-        let isDark = UITraitCollection.current.userInterfaceStyle == .dark
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let textColor = isDark ? "#FFFFFF" : "#000000"
         let codeBg = isDark ? "#2C2C2E" : "#F0F0F0"
         let preBg = isDark ? "#1C1C1E" : "#F5F5F5"
         let borderColor = isDark ? "#555" : "#CCC"
         let quoteColor = isDark ? "#AAA" : "#666"
-        let markBg = isDark ? "#B8860B" : "#FFEF5C"
+        let footnoteBg = isDark ? "#2A2A2E" : "#F8F8F8"
         let tableBg = isDark ? "#1E1E20" : "#FAFAFA"
         let tableHeaderBg = isDark ? "#2A2A2E" : "#F0F0F2"
 
@@ -21,9 +22,9 @@ enum HTMLConverter {
         <style>
             body {
                 font-family: -apple-system, SF Pro Text, system-ui;
-                font-size: 17px;
+                font-size: 16px;
                 color: \(textColor);
-                line-height: 1.65;
+                line-height: 1.6;
                 -webkit-font-smoothing: antialiased;
             }
             p { margin: 0 0 0.55em 0; }
@@ -32,23 +33,31 @@ enum HTMLConverter {
                 margin: 20px 0 8px; letter-spacing: -0.02em;
             }
             h2 {
-                font-size: 24px; font-weight: 700;
+                font-size: 22px; font-weight: 700;
                 margin: 18px 0 6px; letter-spacing: -0.015em;
             }
             h3 {
-                font-size: 20px; font-weight: 600;
+                font-size: 18px; font-weight: 600;
                 margin: 14px 0 4px; letter-spacing: -0.01em;
             }
-            mark { background-color: \(markBg); padding: 2px 4px; border-radius: 3px; }
+            mark { padding: 1px 4px; border-radius: 3px; }
+            mark.yellow { background-color: rgba(255,242,92,0.55); }
+            mark.green { background-color: rgba(133,230,133,0.45); }
+            mark.blue { background-color: rgba(135,194,255,0.45); }
+            mark.pink { background-color: rgba(255,140,191,0.45); }
+            mark.orange { background-color: rgba(255,191,89,0.50); }
+            mark.purple { background-color: rgba(191,140,255,0.40); }
+            mark:not([class]) { background-color: rgba(255,242,92,0.55); }
+            s, del, strike { text-decoration: line-through; color: \(quoteColor); }
             code {
                 font-family: SF Mono, Menlo, monospace;
-                font-size: 15px;
+                font-size: 13.5px;
                 background-color: \(codeBg);
                 padding: 2px 6px; border-radius: 4px;
             }
             pre {
                 font-family: SF Mono, Menlo, monospace;
-                font-size: 15px;
+                font-size: 13.5px;
                 background-color: \(preBg);
                 padding: 12px 14px; border-radius: 8px;
                 overflow-x: auto; line-height: 1.5;
@@ -62,8 +71,24 @@ enum HTMLConverter {
                 background-color: \(isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)");
                 border-radius: 0 6px 6px 0;
             }
-            ul, ol { padding-left: 22px; margin: 4px 0; }
-            li { margin: 5px 0; line-height: 1.55; }
+            ul, ol { padding-left: 20px; margin: 4px 0; }
+            li { margin: 4px 0; line-height: 1.55; }
+            sup.footnote-ref {
+                color: #0066CC;
+                font-size: 10px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .footnote-section {
+                border-top: 1px solid \(borderColor);
+                margin-top: 24px;
+                padding: 12px;
+                font-size: 13px;
+                color: \(quoteColor);
+                background-color: \(footnoteBg);
+                border-radius: 6px;
+            }
+            .footnote-section p { margin: 4px 0; }
             img {
                 max-width: 100%; height: auto;
                 border-radius: 8px; margin: 6px 0;
@@ -72,7 +97,7 @@ enum HTMLConverter {
                 border-collapse: collapse;
                 width: 100%;
                 margin: 10px 0;
-                font-size: 15px;
+                font-size: 14px;
                 background-color: \(tableBg);
                 border-radius: 6px;
             }
@@ -84,7 +109,8 @@ enum HTMLConverter {
             table[data-vz-table] th {
                 background-color: \(tableHeaderBg);
                 font-weight: 600;
-                font-size: 14px;
+                font-size: 13px;
+                text-transform: none;
             }
             hr {
                 border: none;
@@ -109,6 +135,7 @@ enum HTMLConverter {
 
         flattenNestedTextLists(in: result)
         postProcessImages(in: result, html: html)
+        postProcessTables(in: result, html: html)
 
         return result
     }
@@ -123,9 +150,9 @@ enum HTMLConverter {
 
             let mutableStyle = (paraStyle.mutableCopy() as! NSMutableParagraphStyle)
             mutableStyle.textLists = []
-            mutableStyle.headIndent = 24
+            mutableStyle.headIndent = 22
             mutableStyle.firstLineHeadIndent = 4
-            mutableStyle.tabStops = [NSTextTab(textAlignment: .natural, location: 24)]
+            mutableStyle.tabStops = [NSTextTab(textAlignment: .natural, location: 22)]
             mutableStyle.paragraphSpacingBefore = 2
 
             fixes.append((range, mutableStyle))
@@ -176,7 +203,7 @@ enum HTMLConverter {
             if let base64Range = html.range(of: "<img[^>]*src=\"data:image[^\"]*\"[^>]*>",
                                              options: .regularExpression) {
                 html = html.replacingCharacters(in: base64Range,
-                    with: "<img src=\"\(url)\" style=\"max-width:100%;height:auto;\">")
+                    with: "<img src=\"\(url)\" style=\"max-width:100%;height:auto;border-radius:6px;\">")
             }
         }
 
@@ -221,10 +248,7 @@ enum HTMLConverter {
         var imageURLs: [String] = []
         for match in matches {
             if let range = Range(match.range(at: 1), in: html) {
-                let url = String(html[range])
-                if !url.hasPrefix("data:") {
-                    imageURLs.append(url)
-                }
+                imageURLs.append(String(html[range]))
             }
         }
 
@@ -246,13 +270,13 @@ enum HTMLConverter {
     private static func loadRemoteImage(url urlString: String, into attrString: NSMutableAttributedString) {
         guard let url = URL(string: urlString) else { return }
         URLSession.shared.dataTask(with: url) { data, _, _ in
-            guard let data, let image = UIImage(data: data) else { return }
+            guard let data, let image = NSImage(data: data) else { return }
             DispatchQueue.main.async {
                 let fullRange = NSRange(location: 0, length: attrString.length)
                 attrString.enumerateAttribute(vzImageURLKey, in: fullRange, options: []) { value, range, stop in
                     guard let stored = value as? String, stored == urlString else { return }
                     let attachment = NSTextAttachment()
-                    let maxWidth: CGFloat = UIScreen.main.bounds.width - 48
+                    let maxWidth: CGFloat = 600
                     let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
                     let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
                     attachment.image = image
@@ -266,12 +290,54 @@ enum HTMLConverter {
         }.resume()
     }
 
-    // MARK: - Insertion helpers
+    private static func postProcessTables(in attrString: NSMutableAttributedString, html: String) {
+        let tablePattern = "<table[^>]*data-vz-table[^>]*>.*?</table>"
+        guard let regex = try? NSRegularExpression(pattern: tablePattern, options: [.dotMatchesLineSeparators]) else { return }
+        let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
 
-    static func insertImageAttachment(url: String, image: UIImage, maxWidth: CGFloat? = nil) -> NSAttributedString {
+        for match in matches.reversed() {
+            guard let range = Range(match.range, in: html) else { continue }
+            let tableHTML = String(html[range])
+
+            guard let tableData = TableData.from(html: tableHTML) else { continue }
+            let preview = tablePreviewString(from: tableData)
+
+            let fullRange = NSRange(location: 0, length: attrString.length)
+            let searchStr = attrString.string as NSString
+            let tableText = "[📊 Таблица \(tableData.rowCount)×\(tableData.columnCount)]"
+            if let loc = searchStr.range(of: tableText).location == NSNotFound ? nil : searchStr.range(of: tableText) {
+                attrString.addAttribute(vzTableHTMLKey, value: tableHTML, range: loc)
+            } else {
+                let placeholder = NSMutableAttributedString(string: preview)
+                let placeholderRange = NSRange(location: 0, length: placeholder.length)
+                placeholder.addAttributes([
+                    .font: NSFont.systemFont(ofSize: 13),
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                    .backgroundColor: NSColor.quaternaryLabelColor,
+                    vzTableHTMLKey: tableHTML
+                ], range: placeholderRange)
+            }
+        }
+    }
+
+    private static func tablePreviewString(from table: TableData) -> String {
+        let cols = table.columnCount
+        let rows = table.rowCount
+        var preview = "[📊 Таблица \(rows)×\(cols)"
+        if let firstRow = table.rows.first, !firstRow.isEmpty {
+            let headers = firstRow.prefix(3).map { $0.text.isEmpty ? "…" : $0.text }
+            preview += ": " + headers.joined(separator: " | ")
+            if firstRow.count > 3 { preview += " | …" }
+        }
+        preview += "]"
+        return preview
+    }
+
+    // MARK: - Image insertion helpers
+
+    static func insertImageAttachment(url: String, image: NSImage, maxWidth: CGFloat = 600) -> NSAttributedString {
         let attachment = NSTextAttachment()
-        let effectiveMaxWidth = maxWidth ?? (UIScreen.main.bounds.width - 48)
-        let scale = image.size.width > effectiveMaxWidth ? effectiveMaxWidth / image.size.width : 1.0
+        let scale = image.size.width > maxWidth ? maxWidth / image.size.width : 1.0
         let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
         attachment.image = image
         attachment.bounds = CGRect(origin: .zero, size: size)
@@ -289,24 +355,11 @@ enum HTMLConverter {
         let result = NSMutableAttributedString(string: "\n" + preview + "\n")
         let pRange = NSRange(location: 1, length: preview.count)
         result.addAttributes([
-            .font: UIFont.systemFont(ofSize: 13),
-            .foregroundColor: UIColor.secondaryLabel,
-            .backgroundColor: UIColor.quaternarySystemFill,
+            .font: NSFont.systemFont(ofSize: 13),
+            .foregroundColor: NSColor.secondaryLabelColor,
+            .backgroundColor: NSColor.quaternaryLabelColor,
             vzTableHTMLKey: tableHTML
         ], range: pRange)
         return result
-    }
-
-    private static func tablePreviewString(from table: TableData) -> String {
-        let cols = table.columnCount
-        let rows = table.rowCount
-        var preview = "[📊 Таблица \(rows)×\(cols)"
-        if let firstRow = table.rows.first, !firstRow.isEmpty {
-            let headers = firstRow.prefix(3).map { $0.text.isEmpty ? "…" : $0.text }
-            preview += ": " + headers.joined(separator: " | ")
-            if firstRow.count > 3 { preview += " | …" }
-        }
-        preview += "]"
-        return preview
     }
 }

@@ -41,14 +41,33 @@ final class NoteStore: ObservableObject {
         isLoading = false
     }
 
-    func createNote(title: String = "", content: String = "", folderId: UUID? = nil) async -> Note? {
+    func createNote(title: String = "", content: String = "", folderId: UUID? = nil, sortOrder: Int = 0) async -> Note? {
         do {
-            let created = try await api.createNote(title: title, content: content, folderId: folderId)
+            let created = try await api.createNote(title: title, content: content, folderId: folderId, sortOrder: sortOrder)
             notes.insert(created, at: 0)
             return created
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    func loadChapters(bookId: UUID) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            notes = try await api.fetchChapters(bookId: bookId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    func reorderNotes(_ items: [APIService.ReorderItem]) async {
+        do {
+            try await api.reorderNotes(items: items)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

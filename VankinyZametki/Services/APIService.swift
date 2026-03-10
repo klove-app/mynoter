@@ -42,11 +42,12 @@ final class APIService: @unchecked Sendable {
         return try await get("/api/notes?search=\(encoded)")
     }
 
-    func createNote(title: String, content: String, folderId: UUID?) async throws -> Note {
+    func createNote(title: String, content: String, folderId: UUID?, sortOrder: Int = 0) async throws -> Note {
         let body: [String: Any?] = [
             "title": title,
             "content": content,
-            "folder_id": folderId?.uuidString
+            "folder_id": folderId?.uuidString,
+            "sort_order": sortOrder
         ]
         return try await post("/api/notes", body: body)
     }
@@ -58,7 +59,11 @@ final class APIService: @unchecked Sendable {
             "folder_id": note.folderId?.uuidString,
             "is_voice_note": note.isVoiceNote,
             "audio_url": note.audioUrl,
-            "transcription_raw": note.transcriptionRaw
+            "transcription_raw": note.transcriptionRaw,
+            "sort_order": note.sortOrder,
+            "synopsis": note.synopsis,
+            "status": note.status.rawValue,
+            "word_count": note.wordCount
         ]
         return try await put("/api/notes/\(note.id)", body: body)
     }
@@ -67,16 +72,97 @@ final class APIService: @unchecked Sendable {
         let _: EmptyResponse = try await delete("/api/notes/\(id)")
     }
 
+    func fetchChapters(bookId: UUID) async throws -> [Note] {
+        try await get("/api/notes?folder_id=\(bookId)&sort_by_order=true")
+    }
+
+    struct ReorderItem: Encodable {
+        let id: UUID
+        let sort_order: Int
+    }
+
+    func reorderNotes(items: [ReorderItem]) async throws {
+        let body: [String: Any] = [
+            "items": items.map { ["id": $0.id.uuidString, "sort_order": $0.sort_order] }
+        ]
+        let _: [String: Int] = try await put("/api/notes/reorder/batch", body: body)
+    }
+
+    struct BookStats: Decodable {
+        let chapterCount: Int
+        let totalWords: Int
+        let completedChapters: Int
+        let draftChapters: Int
+        let inProgressChapters: Int
+        let revisedChapters: Int
+
+        enum CodingKeys: String, CodingKey {
+            case chapterCount = "chapter_count"
+            case totalWords = "total_words"
+            case completedChapters = "completed_chapters"
+            case draftChapters = "draft_chapters"
+            case inProgressChapters = "in_progress_chapters"
+            case revisedChapters = "revised_chapters"
+        }
+    }
+
+    func fetchBookStats(bookId: UUID) async throws -> BookStats {
+        try await get("/api/notes/book-stats/\(bookId)")
+    }
+
+    // MARK: - Tags
+
+    func fetchTags() async throws -> [Tag] {
+        try await get("/api/tags")
+    }
+
+    func createTag(name: String, color: String) async throws -> Tag {
+        let body: [String: Any?] = ["name": name, "color": color]
+        return try await post("/api/tags", body: body)
+    }
+
+    func updateTag(_ tag: Tag) async throws -> Tag {
+        let body: [String: Any?] = ["name": tag.name, "color": tag.color]
+        return try await put("/api/tags/\(tag.id)", body: body)
+    }
+
+    func deleteTag(id: UUID) async throws {
+        let _: EmptyResponse = try await delete("/api/tags/\(id)")
+    }
+
+    func fetchTagsForNote(noteId: UUID) async throws -> [Tag] {
+        try await get("/api/tags/note/\(noteId)")
+    }
+
+    func addTagToNote(tagId: UUID, noteId: UUID) async throws -> [Tag] {
+        let body: [String: Any?] = ["tag_id": tagId.uuidString]
+        return try await post("/api/tags/note/\(noteId)", body: body)
+    }
+
+    func removeTagFromNote(tagId: UUID, noteId: UUID) async throws -> [Tag] {
+        try await delete("/api/tags/note/\(noteId)/\(tagId)")
+    }
+
+    func fetchNotesForTag(tagId: UUID) async throws -> [Note] {
+        try await get("/api/tags/\(tagId)/notes")
+    }
+
     // MARK: - Folders
 
     func fetchFolders() async throws -> [Folder] {
         try await get("/api/folders")
     }
 
-    func createFolder(name: String, parentId: UUID?) async throws -> Folder {
+    func createFolder(name: String, parentId: UUID?, type: FolderType = .folder,
+                      description: String = "", targetWordCount: Int? = nil,
+                      genre: String = "") async throws -> Folder {
         let body: [String: Any?] = [
             "name": name,
-            "parent_id": parentId?.uuidString
+            "parent_id": parentId?.uuidString,
+            "type": type.rawValue,
+            "description": description,
+            "target_word_count": targetWordCount,
+            "genre": genre
         ]
         return try await post("/api/folders", body: body)
     }
@@ -84,7 +170,11 @@ final class APIService: @unchecked Sendable {
     func updateFolder(_ folder: Folder) async throws -> Folder {
         let body: [String: Any?] = [
             "name": folder.name,
-            "parent_id": folder.parentId?.uuidString
+            "parent_id": folder.parentId?.uuidString,
+            "type": folder.type.rawValue,
+            "description": folder.description,
+            "target_word_count": folder.targetWordCount,
+            "genre": folder.genre
         ]
         return try await put("/api/folders/\(folder.id)", body: body)
     }
@@ -141,6 +231,63 @@ final class APIService: @unchecked Sendable {
         let body: [String: Any?] = ["transcription": transcription]
         let result: FormatTextResult = try await post("/api/voice/format-text", body: body)
         return result.html
+    }
+
+    func normalizeContent(html: String) async throws -> String {
+        let body: [String: Any?] = ["html": html]
+        let result: FormatTextResult = try await post("/api/voice/normalize", body: body)
+        return result.html
+    }
+
+    // MARK: - Diagram Generation
+
+    struct DiagramResult: Decodable {
+        let url: String
+        let mermaidCode: String
+        let filename: String
+    }
+
+    func generateDiagram(description: String) async throws -> DiagramResult {
+        let body: [String: Any?] = ["description": description]
+        return try await post("/api/diagrams/generate", body: body)
+    }
+
+    // MARK: - Image Upload
+
+    struct ImageUploadResult: Decodable {
+        let filename: String
+        let url: String
+        let width: Int?
+        let height: Int?
+        let size: Int?
+    }
+
+    func uploadImage(data: Data, mimeType: String = "image/jpeg") async throws -> ImageUploadResult {
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: URL(string: "\(baseURL)/api/images/upload")!)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let ext: String
+        switch mimeType {
+        case "image/png": ext = "png"
+        case "image/gif": ext = "gif"
+        case "image/webp": ext = "webp"
+        default: ext = "jpg"
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"upload.\(ext)\"\r\n")
+        body.append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n")
+
+        request.httpBody = body
+
+        let (responseData, response) = try await session.data(for: request)
+        try checkResponse(response, data: responseData)
+        return try decoder.decode(ImageUploadResult.self, from: responseData)
     }
 
     // MARK: - Audio Upload

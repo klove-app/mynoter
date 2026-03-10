@@ -5,12 +5,14 @@ struct VankinyZametkiApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var noteStore = NoteStore()
     @StateObject private var folderStore = FolderStore()
+    @StateObject private var tagStore = TagStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(noteStore)
                 .environmentObject(folderStore)
+                .environmentObject(tagStore)
         }
     }
 }

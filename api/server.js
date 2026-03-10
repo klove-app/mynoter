@@ -6,6 +6,7 @@ import { voiceRouter } from "./routes/voice.js";
 import { audioRouter } from "./routes/audio.js";
 import { tagsRouter } from "./routes/tags.js";
 import { imagesRouter } from "./routes/images.js";
+import { diagramsRouter } from "./routes/diagrams.js";
 import pool from "./db.js";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use("/api/voice", voiceRouter);
 app.use("/api/audio", audioRouter);
 app.use("/api/tags", tagsRouter);
 app.use("/api/images", imagesRouter);
+app.use("/api/diagrams", diagramsRouter);
 
 app.get("/health", async (_req, res) => {
   try {

@@ -9,17 +9,31 @@ enum NoteSortOption: String, CaseIterable {
 
 struct NoteListView: View {
     @EnvironmentObject private var noteStore: NoteStore
+    @EnvironmentObject private var folderStore: FolderStore
+    @EnvironmentObject private var tagStore: TagStore
     @State private var showingNewNote = false
     @State private var showingVoiceRecorder = false
     @State private var selectedNote: Note?
     @State private var sortOption: NoteSortOption = .dateDesc
     @State private var searchText = ""
+    @State private var selectedTagId: UUID?
 
     private var filteredNotes: [Note] {
-        let base = searchText.isEmpty ? noteStore.notes : noteStore.notes.filter {
-            $0.title.localizedCaseInsensitiveContains(searchText) ||
-            $0.snippet.localizedCaseInsensitiveContains(searchText)
+        var base = noteStore.notes
+
+        if let tagId = selectedTagId {
+            base = base.filter { note in
+                note.tags.contains(where: { $0.id == tagId })
+            }
         }
+
+        if !searchText.isEmpty {
+            base = base.filter {
+                $0.title.localizedCaseInsensitiveContains(searchText) ||
+                $0.snippet.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+
         switch sortOption {
         case .dateDesc: return base.sorted { $0.createdAt > $1.createdAt }
         case .dateAsc: return base.sorted { $0.createdAt < $1.createdAt }
@@ -32,6 +46,7 @@ struct NoteListView: View {
         VStack(spacing: 0) {
             header
             searchBar
+            tagFilterBar
             noteCountBar
 
             if noteStore.isLoading && noteStore.notes.isEmpty {
@@ -81,6 +96,9 @@ struct NoteListView: View {
             if noteStore.notes.isEmpty {
                 await noteStore.loadNotes()
             }
+            if folderStore.folders.isEmpty {
+                await folderStore.loadFolders()
+            }
         }
     }
 
@@ -89,44 +107,46 @@ struct NoteListView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Text("Заметки")
-                .font(.title2.bold())
+                .font(.system(size: 22, weight: .bold))
 
             Spacer()
 
-            if !noteStore.notes.isEmpty {
-                Menu {
-                    Picker("Сортировка", selection: $sortOption) {
-                        ForEach(NoteSortOption.allCases, id: \.self) { opt in
-                            Text(opt.rawValue).tag(opt)
+            HStack(spacing: DS.Spacing.xs) {
+                if !noteStore.notes.isEmpty {
+                    Menu {
+                        Picker("Сортировка", selection: $sortOption) {
+                            ForEach(NoteSortOption.allCases, id: \.self) { opt in
+                                Text(opt.rawValue).tag(opt)
+                            }
                         }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 34, height: 34)
+                            .background(Color(.tertiarySystemFill), in: Circle())
                     }
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
-                        .font(.system(size: 17))
-                        .foregroundStyle(.primary)
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
+                }
+
+                Button { showingVoiceRecorder = true } label: {
+                    Image(systemName: "mic")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(Color(.tertiarySystemFill), in: Circle())
+                }
+
+                Button { showingNewNote = true } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor, in: Circle())
                 }
             }
-
-            Button { showingVoiceRecorder = true } label: {
-                Image(systemName: "mic")
-                    .font(.system(size: 17))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
-
-            Button { showingNewNote = true } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 17))
-                    .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.top, DS.Spacing.xs)
     }
 
     // MARK: - Search (Evernote style — outline border, icon on right)
@@ -158,6 +178,55 @@ struct NoteListView: View {
         .padding(.bottom, 6)
     }
 
+    // MARK: - Tag Filter
+
+    @ViewBuilder
+    private var tagFilterBar: some View {
+        if !tagStore.tags.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    tagFilterChip(label: "Все", color: .accentColor, isSelected: selectedTagId == nil) {
+                        withAnimation(.easeOut(duration: 0.2)) { selectedTagId = nil }
+                    }
+
+                    ForEach(tagStore.tags) { tag in
+                        tagFilterChip(label: tag.name, color: tag.swiftUIColor, isSelected: selectedTagId == tag.id) {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                selectedTagId = selectedTagId == tag.id ? nil : tag.id
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.bottom, 6)
+        }
+    }
+
+    private func tagFilterChip(label: String, color: Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 6, height: 6)
+                Text(label)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(isSelected ? color.opacity(0.15) : Color(.tertiarySystemFill))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(isSelected ? color.opacity(0.4) : .clear, lineWidth: 1)
+            )
+            .foregroundStyle(isSelected ? color : .secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Count
 
     private var noteCountBar: some View {
@@ -175,10 +244,21 @@ struct NoteListView: View {
 
     // MARK: - List
 
+    private func accentColor(for note: Note) -> Color {
+        if let fid = note.folderId {
+            if let folder = folderStore.folders.first(where: { $0.id == fid }) {
+                return folder.isBook ? .orange : .blue
+            }
+        }
+        if note.isVoiceNote { return .orange }
+        if let first = note.tags.first { return first.swiftUIColor }
+        return .gray.opacity(0.5)
+    }
+
     private var notesList: some View {
         List {
             ForEach(filteredNotes) { note in
-                NoteRowView(note: note)
+                NoteRowView(note: note, accent: accentColor(for: note))
                     .contentShape(Rectangle())
                     .onTapGesture { selectedNote = note }
             }
@@ -196,7 +276,7 @@ struct NoteListView: View {
     // MARK: - Helpers
 
     private var noteCountText: String {
-        let c = noteStore.notes.count
+        let c = filteredNotes.count
         let m10 = c % 10
         let m100 = c % 100
         let w: String
@@ -211,32 +291,65 @@ struct NoteListView: View {
 
 struct NoteRowView: View {
     let note: Note
+    var accent: Color = .gray.opacity(0.5)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(note.displayTitle)
-                .font(.body.weight(.semibold))
-                .lineLimit(1)
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(accent)
+                .frame(width: 3)
+                .padding(.vertical, 4)
 
-            if !note.snippet.isEmpty {
-                Text(note.snippet)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Text(note.displayTitle)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1)
 
-            HStack(spacing: 4) {
-                Text(note.formattedDate)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                if note.isVoiceNote {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.red)
+                    if note.isVoiceNote {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                if !note.snippet.isEmpty {
+                    Text(note.snippet)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 6) {
+                    Text(note.formattedDate)
+                        .font(.system(size: 12).monospacedDigit())
+                        .foregroundStyle(.quaternary)
+
+                    if !note.tags.isEmpty {
+                        ForEach(note.tags.prefix(2)) { tag in
+                            HStack(spacing: 2) {
+                                Circle()
+                                    .fill(tag.swiftUIColor)
+                                    .frame(width: 5, height: 5)
+                                Text(tag.name)
+                                    .font(.system(size: 11))
+                            }
+                            .foregroundStyle(.tertiary)
+                        }
+                        if note.tags.count > 2 {
+                            Text("+\(note.tags.count - 2)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.quaternary)
+                        }
+                    }
                 }
             }
+            .padding(.leading, 10)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 5)
+        .background(accent.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

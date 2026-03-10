@@ -40,7 +40,25 @@ CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_notes_sort ON notes(folder_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_folders_type ON folders(type);
 
--- 4. Функция автообновления updated_at
+-- 4. Теги для заметок
+CREATE TABLE IF NOT EXISTS tags (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT 'blue',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS note_tags (
+    note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (note_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_note_tags_note ON note_tags(note_id);
+CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag_id);
+
+-- 5. Функция автообновления updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -49,7 +67,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. Триггеры автообновления
+-- 6. Триггеры автообновления
 DROP TRIGGER IF EXISTS set_notes_updated_at ON notes;
 CREATE TRIGGER set_notes_updated_at
     BEFORE UPDATE ON notes
@@ -59,5 +77,11 @@ CREATE TRIGGER set_notes_updated_at
 DROP TRIGGER IF EXISTS set_folders_updated_at ON folders;
 CREATE TRIGGER set_folders_updated_at
     BEFORE UPDATE ON folders
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_tags_updated_at ON tags;
+CREATE TRIGGER set_tags_updated_at
+    BEFORE UPDATE ON tags
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

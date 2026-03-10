@@ -20,9 +20,15 @@ final class FolderStore: ObservableObject {
         isLoading = false
     }
 
-    func createFolder(name: String, parentId: UUID? = nil) async -> Folder? {
+    func createFolder(name: String, parentId: UUID? = nil, type: FolderType = .folder,
+                      description: String = "", targetWordCount: Int? = nil,
+                      genre: String = "") async -> Folder? {
         do {
-            let created = try await api.createFolder(name: name, parentId: parentId)
+            let created = try await api.createFolder(
+                name: name, parentId: parentId, type: type,
+                description: description, targetWordCount: targetWordCount,
+                genre: genre
+            )
             folders.append(created)
             folders.sort { $0.name < $1.name }
             return created
@@ -31,6 +37,9 @@ final class FolderStore: ObservableObject {
             return nil
         }
     }
+
+    var books: [Folder] { folders.filter { $0.isBook } }
+    var regularFolders: [Folder] { folders.filter { !$0.isBook } }
 
     func updateFolder(_ folder: Folder) async {
         do {
