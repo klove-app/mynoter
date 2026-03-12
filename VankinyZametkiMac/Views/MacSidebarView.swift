@@ -166,28 +166,30 @@ struct MacSidebarView: View {
         .alert("Новая папка", isPresented: $showNewFolder) {
             TextField("Название", text: $newFolderName)
             Button("Создать") {
-                guard !newFolderName.isEmpty else { return }
+                let name = newFolderName.trimmingCharacters(in: .whitespaces)
+                newFolderName = ""
+                guard !name.isEmpty else { return }
                 Task {
                     _ = try? await APIService.shared.createFolder(
-                        name: newFolderName, parentId: nil
+                        name: name, parentId: nil
                     )
                     await folderStore.loadFolders()
                 }
-                newFolderName = ""
             }
             Button("Отмена", role: .cancel) { newFolderName = "" }
         }
         .alert("Новая книга", isPresented: $showNewBook) {
             TextField("Название книги", text: $newBookName)
             Button("Создать") {
-                guard !newBookName.isEmpty else { return }
+                let name = newBookName.trimmingCharacters(in: .whitespaces)
+                newBookName = ""
+                guard !name.isEmpty else { return }
                 Task {
                     _ = try? await APIService.shared.createFolder(
-                        name: newBookName, parentId: nil, type: .book
+                        name: name, parentId: nil, type: .book
                     )
                     await folderStore.loadFolders()
                 }
-                newBookName = ""
             }
             Button("Отмена", role: .cancel) { newBookName = "" }
         }
